@@ -146,12 +146,15 @@ class CurriculumCallback(BaseCallback):
             
             # Update all environments to new stage
             try:
-                envs = self.training_env.envs
-                for env in envs:
-                    env.set_curriculum_stage(self.current_stage)
+                self.training_env.env_method('set_curriculum_stage',self.current_stage)
+            
             except AttributeError:
+                try:
+                    self.training_env.set_curriculum_stage(self.current_stage)
+                except Exception as e:
+                    print(f"⚠️  Warning: Could not set curriculum stage on environment: {e}")
                 # Single environment
-                self.training_env.set_curriculum_stage(self.current_stage)
+                
         
         return True
 

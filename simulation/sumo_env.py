@@ -224,11 +224,11 @@ class SUMOSimulation:
             self.cummulative_arrived+=arrived_this_step
 
             if self.cummulative_arrived < self._last_reported_arrivals:
-                print(f"[ERROR] Cumulative counter went backwards! " f"{self._last_reported_arrivals} -> {self.cummulative_arrived}")
+                # print(f"[ERROR] Cumulative counter went backwards! " f"{self._last_reported_arrivals} -> {self.cummulative_arrived}")
                 self.cummulative_arrived = self._last_reported_arrivals
 
-            if arrived_this_step > 0:
-                print(f"[SUMO] Step {self._current_step}: +{arrived_this_step} arrived, total={self.cummulative_arrived}")
+            # if arrived_this_step > 0:
+            #     print(f"[SUMO] Step {self._current_step}: +{arrived_this_step} arrived, total={self.cummulative_arrived}")
             
         except traci.TraCIException as e:
             logger.error(f"SUMO step failed: {e}")
@@ -283,7 +283,7 @@ class SUMOSimulation:
         self._last_reported_arrivals = self.cummulative_arrived
         
         # Debug print
-        print(f"[SUMO.get_arrived] Returning cumulative: {self.cummulative_arrived}")
+        # print(f"[SUMO.get_arrived] Returning cumulative: {self.cummulative_arrived}")
         
         return self.cummulative_arrived
     
