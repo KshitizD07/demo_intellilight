@@ -175,10 +175,10 @@ class TrafficEnv(gym.Env):
         logger.info(f"Starting episode {self.episode_count}")
         
         # Periodic cleanup
-        if self.episode_count % ResourceConfig.CLEANUP_INTERVAL == 0:
-            cleaned = self.route_gen.cleanup_old_routes()
-            if cleaned > 0:
-                logger.info(f"Cleaned up {cleaned} old route files")
+        # if self.episode_count % ResourceConfig.CLEANUP_INTERVAL == 0:
+        #     cleaned = self.route_gen.cleanup_old_routes()
+        #     if cleaned > 0:
+        #         logger.info(f"Cleaned up {cleaned} old route files")
         
         # Generate new traffic scenario
         self.current_route_file = self.route_gen.generate_unique_filename()
@@ -314,7 +314,7 @@ class TrafficEnv(gym.Env):
         
         # Check termination
         terminated = False
-        truncated = self.simulation_step >= self.episode_length
+        truncated = self.sumo.get_current_time() >= self.episode_length
         
         # Prepare info dict
         info = {

@@ -143,7 +143,8 @@ class RewardCalculator:
         
         # Apply curriculum-based scaling
         total_reward *= self._get_curriculum_multiplier()
-        
+        # total_reward = np.clip(total_reward, -50, 50)
+        total_reward = np.tanh(total_reward / 100.0) * 100.0
         return float(total_reward)
     
     def _calculate_throughput(self, arrived_count: int) -> int:
@@ -209,11 +210,11 @@ class RewardCalculator:
         total_wait = np.sum(wait_times)
         
         # Linear component
-        linear_penalty = total_wait * 0.01
+        linear_penalty = total_wait * 0.02
         capped_wait = min(total_wait, 5000)
         
         # Quadratic component (increases urgency for long waits)
-        quadratic_penalty = (capped_wait ** 1.2) * 0.0005
+        quadratic_penalty = (capped_wait ** 1.3) * 0.0007
         total_penalty = min(linear_penalty + quadratic_penalty, 100.0)
         
         return -total_penalty * abs(self.wait_time_weight)
@@ -241,7 +242,7 @@ class RewardCalculator:
             extra_penalty = (total_queue - 30) * 2.0
             penalty = base_penalty + extra_penalty+medium_penalty
         
-        penalty=min(penalty,200.0)
+        penalty=min(penalty,20.0)
 
         return -penalty
     

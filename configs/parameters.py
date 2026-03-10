@@ -163,13 +163,13 @@ class TrainingConfig:
     """Reinforcement learning training parameters."""
     
     # PPO hyperparameters (tuned for traffic control)
-    LEARNING_RATE = 3e-4
+    LEARNING_RATE = 1e-4
     N_STEPS = 2048              # Steps per update
     BATCH_SIZE = 64
-    N_EPOCHS = 10
+    N_EPOCHS = 5
     GAMMA = 0.99                # Discount factor
     GAE_LAMBDA = 0.95          # GAE parameter
-    CLIP_RANGE = 0.2           # PPO clip range
+    CLIP_RANGE = 0.1           # PPO clip range
     ENT_COEF = 0.01            # Entropy coefficient (exploration)
     VF_COEF = 0.5              # Value function coefficient
     MAX_GRAD_NORM = 0.5        # Gradient clipping
@@ -230,10 +230,10 @@ class RewardConfig:
     """
     
     # Component weights (must be tuned together)
-    WAIT_TIME_WEIGHT = -2.0      # Minimize total waiting time
-    THROUGHPUT_WEIGHT = 0.3      # Maximize vehicles served
-    FAIRNESS_WEIGHT = -1.0       # Penalize unequal treatment
-    EMERGENCY_WEIGHT = 20.0      # Prioritize emergency vehicles
+    WAIT_TIME_WEIGHT = -0.05      # Minimize total waiting time
+    THROUGHPUT_WEIGHT = 1.0     # Maximize vehicles served
+    FAIRNESS_WEIGHT = -0.1       # Penalize unequal treatment
+    EMERGENCY_WEIGHT = 5.0      # Prioritize emergency vehicles
     
     # Penalty thresholds
     EXCESSIVE_WAIT_THRESHOLD = SignalTiming.MAX_WAIT  # When to apply fairness penalty
