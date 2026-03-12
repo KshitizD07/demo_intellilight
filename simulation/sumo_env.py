@@ -22,6 +22,11 @@ import logging
 from typing import Optional, List, Dict, Tuple
 import psutil
 
+# Add project root to Python path
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
 try:
     import traci
 except ImportError:
@@ -30,7 +35,7 @@ except ImportError:
         "Visit: https://www.eclipse.org/sumo/"
     )
 
-# FIXED: Import from new parameters structure
+# Import from new parameters structure
 from configs.parameters import simulation, paths
 
 # Setup logging
