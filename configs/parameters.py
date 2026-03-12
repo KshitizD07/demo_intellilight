@@ -2,420 +2,382 @@
 IntelliLight Configuration Parameters
 ======================================
 
-Centralized configuration management for the IntelliLight traffic control system.
-This file contains all system parameters organized by category for easy tuning and deployment.
+Centralized configuration for 4-phase production system.
 
-Design Philosophy:
-- All magic numbers are defined here
-- Parameters are grouped by functional area
-- Documentation explains the purpose and constraints of each parameter
-- Real-world deployment settings are clearly marked
+UPDATES:
+- 4-phase signal parameters
+- Enhanced safety settings
+- Realistic traffic configuration
+- Production reward weights
 """
 
-import os
+from dataclasses import dataclass
+from typing import List
 
-# =============================================================================
-# SUMO SIMULATION CONFIGURATION
-# =============================================================================
 
-class SUMOConfig:
-    """SUMO simulation engine configuration."""
+# ============================================================================
+# SIMULATION PARAMETERS
+# ============================================================================
+
+class SimulationConfig:
+    """SUMO simulation settings."""
     
-    # Binary and file paths
-    BINARY = os.environ.get("SUMO_BINARY", "sumo")  # Use "sumo-gui" for visualization
-    CONFIG_FILE = "intersection.sumocfg"
+    # Episode settings
+    EPISODE_LENGTH = 1800  # 30 minutes in seconds
+    STEP_LENGTH = 1.0      # SUMO time step (seconds)
     
-    # Directory structure
-    ROUTE_DIR = "data/generated_routes"  # Auto-generated traffic scenarios
-    SUMO_CONFIG_DIR = "configs/sumo"     # Static SUMO network files
+    # Network
+    SUMO_CONFIG_FILE = "intersection.sumocfg"
+    TRAFFIC_LIGHT_ID = "J1"
     
-    # Performance optimization flags
-    FLAGS = [
-        "--no-step-log",                      # Disable step logging (faster)
-        "--no-warnings", "true",              # Suppress warnings (cleaner logs)
-        "--duration-log.disable",             # Disable duration logging
-        "--tripinfo-output.write-unfinished", # Handle incomplete trips gracefully
-        "--time-to-teleport", "300"           # Teleport stuck vehicles after 5 min
+    # GUI
+    USE_GUI = False  # Set True for visualization
+    GUI_DELAY = 0    # ms delay between steps (0 = max speed)
+
+
+# ============================================================================
+# 4-PHASE SIGNAL PARAMETERS
+# ============================================================================
+
+class SignalConfig:
+    """4-phase traffic signal settings."""
+    
+    # Number of phases
+    N_PHASES = 4
+    
+    # Phase definitions
+    PHASE_NAMES = [
+        "EW Through + Right",
+        "EW Protected Left",
+        "NS Through + Right", 
+        "NS Protected Left"
     ]
     
-    # Operational parameters
-    TIMEOUT = 30  # Seconds to wait for SUMO operations before failing
-    
-
-class NetworkTopology:
-    """
-    Network topology configuration matching SUMO network definition.
-    
-    These must match the actual network file (intersection_net.xml).
-    Modify these if you change the intersection layout.
-    """
-    
-    # Induction loop detectors by direction
-    DETECTORS = {
-        "W": ["det_W_0", "det_W_1"],  # West approach
-        "E": ["det_E_0", "det_E_1"],  # East approach
-        "N": ["det_N_0", "det_N_1"],  # North approach
-        "S": ["det_S_0", "det_S_1"]   # South approach
+    # SUMO phase IDs (must match your .net.xml)
+    SUMO_PHASE_MAP = {
+        0: 0,  # EW through
+        1: 1,  # EW left
+        2: 2,  # NS through
+        3: 3   # NS left
     }
     
-    # Lane identifiers by direction
-    LANES = {
-        "W": ["W1_to_J1_0", "W1_to_J1_1"],  # West to Junction
-        "E": ["E1_to_J1_0", "E1_to_J1_1"],  # East to Junction
-        "N": ["N1_to_J1_0", "N1_to_J1_1"],  # North to Junction
-        "S": ["S1_to_J1_0", "S1_to_J1_1"]   # South to Junction
-    }
+    # Green duration options (seconds)
+    GREEN_DURATIONS = [10, 15, 20, 25, 30, 35, 40, 45]
     
-    # Outgoing edges from intersection
-    OUTGOING_EDGES = ["J1_to_N1", "J1_to_S1", "J1_to_E1", "J1_to_W1"]
+    # Minimum timings (safety constraints)
+    MIN_GREEN = 10      # Minimum green time
+    ALL_RED = 4         # Clearance interval between phases
+    YELLOW_TIME = 3     # Yellow light duration (if defined in network)
     
-    # Traffic light program ID
-    TRAFFIC_LIGHT_ID = "J1"  # Junction 1 traffic light
+    # Cyclic enforcement
+    CYCLIC_MODE = True  # Enforce 0→1→2→3→0 cycle
 
 
-# =============================================================================
-# TRAFFIC SIGNAL TIMING PARAMETERS
-# =============================================================================
+# ============================================================================
+# TRAFFIC GENERATION PARAMETERS
+# ============================================================================
 
-class SignalTiming:
-    """
-    Traffic signal timing parameters.
+class TrafficConfig:
+    """Realistic traffic generation settings."""
     
-    These values directly affect safety and traffic flow.
-    Modifications should consider local traffic regulations.
-    """
+    # Base demand (vehicles per hour)
+    BASE_DEMAND = 800
     
-    # Green light duration options (seconds)
-    MIN_GREEN = 15             # Minimum safe green time (safety requirement)
-    GREEN_OPTIONS = [15, 18,21,24,27, 30,33,36,39,42,45,48,51,54,57,60]  # Available green durations for RL agent
+    # Volatility (random variance)
+    VOLATILITY = 0.3  # ±30% realistic uncertainty
     
-    # Safety intervals
-    ALL_RED = 4                 # All-red clearance interval (safety critical)
-    YELLOW_TIME = 3             # Yellow (amber) warning time
+    # Random events
+    ENABLE_EVENTS = True
+    EVENT_PROBABILITY = 0.10  # 10% chance per episode
     
-    # Fairness constraints
-    MAX_WAIT = 60               # Maximum acceptable wait time before penalty (seconds)
+    # Time-of-day curves
+    ENABLE_TIME_CURVES = True
     
-    # Phase definitions (which directions get green simultaneously)
-    PHASES = {
-        "EW": ["E", "W"],       # East-West green
-        "NS": ["N", "S"]        # North-South green
-    }
-
-
-# =============================================================================
-# SIMULATION SCENARIO PARAMETERS
-# =============================================================================
-
-class ScenarioConfig:
-    """Traffic scenario generation parameters."""
-    
-    # Realistic sensor modeling
-    DETECTION_MISS_PROB = 0.1   # 10% probability of missed vehicle detection
-    
-    # Emergency vehicle simulation
-    EMERGENCY_PROB_EP = 0.5     # 50% of episodes include emergency vehicle
-    EMERGENCY_DEPART_RANGE = (300, 1200)  # Emergency appears between 5-20 min
-    
-    # Available traffic scenarios
-    SCENARIOS = ["MORNING_RUSH", "EVENING_RUSH", "WEEKEND"]
-    
-    # Traffic volume definitions (vehicles per hour)
-    TRAFFIC_VOLUMES = {
+    # Scenario definitions
+    SCENARIOS = {
+        "WEEKEND": {
+            "base_demand": 600,
+            "volatility": 0.25,
+            "time_of_day": 14.0  # 2 PM
+        },
         "MORNING_RUSH": {
-            "major_in": (600, 800),   # Heavy inbound traffic
-            "major_out": (300, 400),  # Light outbound traffic
-            "minor": (100, 200)       # Low cross traffic
+            "base_demand": 1200,
+            "volatility": 0.35,
+            "time_of_day": 8.0   # 8 AM
         },
         "EVENING_RUSH": {
-            "major_in": (300, 400),   # Light inbound traffic
-            "major_out": (600, 800),  # Heavy outbound traffic
-            "minor": (100, 200)       # Low cross traffic
+            "base_demand": 1100,
+            "volatility": 0.35,
+            "time_of_day": 18.0  # 6 PM
         },
-        "WEEKEND": {
-            "major_in": (250, 350),   # Balanced traffic
-            "major_out": (250, 350),  # Balanced traffic
-            "minor": (150, 250)       # Moderate cross traffic
+        "NIGHT": {
+            "base_demand": 300,
+            "volatility": 0.40,
+            "time_of_day": 2.0   # 2 AM
         }
     }
+
+
+# ============================================================================
+# SAFETY PARAMETERS
+# ============================================================================
+
+class SafetyConfig:
+    """Production safety constraints."""
     
-    # Vehicle type distribution (must sum to 1.0)
-    VEHICLE_DISTRIBUTION = {
-        "car": 0.70,        # 70% cars
-        "2-wheeler": 0.20,  # 20% two-wheelers
-        "bus": 0.10         # 10% buses
-    }
-
-
-# =============================================================================
-# EPISODE AND TRAINING PARAMETERS
-# =============================================================================
-
-class EpisodeConfig:
-    """Simulation episode configuration."""
+    # Maximum acceptable wait times
+    MAX_ACCEPTABLE_WAIT = 90  # seconds (HARD LIMIT)
+    STARVATION_THRESHOLD = 60  # Start penalizing after 60s
     
-    LENGTH = 1800              # Episode duration in simulation seconds (30 minutes)
-    SIM_STEP = 1               # Simulation time step (1 second)
-    MAX_STEPS = LENGTH // SIM_STEP  # Maximum steps per episode
-
-
-class TrainingConfig:
-    """Reinforcement learning training parameters."""
+    # Emergency vehicles
+    EMERGENCY_MAX_WAIT = 30   # Max acceptable emergency wait
+    EMERGENCY_PRIORITY = True  # Enable emergency override
     
-    # PPO hyperparameters (tuned for traffic control)
-    LEARNING_RATE = 1e-4
-    N_STEPS = 2048              # Steps per update
-    BATCH_SIZE = 64
-    N_EPOCHS = 5
-    GAMMA = 0.99                # Discount factor
-    GAE_LAMBDA = 0.95          # GAE parameter
-    CLIP_RANGE = 0.1           # PPO clip range
-    ENT_COEF = 0.01            # Entropy coefficient (exploration)
-    VF_COEF = 0.5              # Value function coefficient
-    MAX_GRAD_NORM = 0.5        # Gradient clipping
+    # Queue limits
+    MAX_QUEUE_WARNING = 40    # Warn at this queue length
+    MAX_QUEUE_CRITICAL = 60   # Critical queue length
     
-    # Training schedule
-    TOTAL_TIMESTEPS = 300000    # Default training duration
-    EVAL_FREQUENCY = 10000      # Evaluate every N timesteps
-    SAVE_FREQUENCY = 50000      # Save model every N timesteps
-    
-    # Vectorized training
-    DEFAULT_N_ENVS = 4          # Number of parallel environments
-    USE_VECENV = True           # Enable vectorized training by default
+    # Failsafe triggers
+    ENABLE_FAILSAFE = True
+    FAILSAFE_TRIGGER_WAIT = 100  # Revert to fixed-timer if wait > 100s
+    FAILSAFE_TRIGGER_QUEUE = 70  # Revert if queue > 70 vehicles
 
 
-# =============================================================================
-# OBSERVATION AND ACTION SPACE PARAMETERS
-# =============================================================================
-
-class ObservationConfig:
-    """Observation space configuration."""
-    
-    # Observation vector structure: [queue_W, queue_E, queue_N, queue_S,
-    #                                wait_W, wait_E, wait_N, wait_S,
-    #                                emergency_flag]
-    SHAPE = (9,)
-    
-    # Normalization bounds
-    MAX_CARS_ON_LANE = 50.0     # Maximum expected vehicles per lane
-    MAX_WAIT_TIME = EpisodeConfig.LENGTH  # Maximum possible wait time
-    
-    # Observation indices (for readability in code)
-    QUEUE_INDICES = slice(0, 4)      # Indices 0-3: queue lengths
-    WAIT_INDICES = slice(4, 8)       # Indices 4-7: wait times
-    EMERGENCY_INDEX = 8              # Index 8: emergency flag
-
-
-class ActionConfig:
-    """Action space configuration."""
-    
-    # Action structure: [direction, duration]
-    # direction: 0 = EW, 1 = NS
-    # duration: index into SignalTiming.GREEN_OPTIONS
-    N_DIRECTIONS = 2
-    # N_DURATIONS = len(SignalTiming.GREEN_OPTIONS)
-    N_DURATIONS=16
-
-
-# =============================================================================
+# ============================================================================
 # REWARD FUNCTION PARAMETERS
-# =============================================================================
+# ============================================================================
+
+@dataclass
+class RewardWeights:
+    """Enhanced reward component weights."""
+    
+    # Primary objectives
+    throughput: float = 1.0      # Vehicles served
+    wait_time: float = -0.08     # Average wait penalty
+    queue: float = -0.04         # Queue length penalty
+    
+    # Secondary objectives  
+    fairness: float = -0.15      # Direction imbalance penalty
+    efficiency: float = 0.4      # Throughput/queue ratio
+    pressure: float = 0.6        # Pressure balance (helps learning)
+    
+    # Safety (CRITICAL)
+    starvation: float = -8.0     # Exponential penalty (STRONG!)
+    emergency: float = 100.0     # Emergency vehicle bonus (HUGE!)
+
 
 class RewardConfig:
-    """
-    Multi-objective reward function weights.
+    """Reward calculation settings."""
     
-    The total reward is a weighted combination of multiple objectives.
-    Adjust these to prioritize different goals (efficiency vs fairness vs emissions).
-    """
+    # Weights
+    WEIGHTS = RewardWeights()
     
-    # Component weights (must be tuned together)
-    WAIT_TIME_WEIGHT = -0.05      # Minimize total waiting time
-    THROUGHPUT_WEIGHT = 1.0     # Maximize vehicles served
-    FAIRNESS_WEIGHT = -0.1       # Penalize unequal treatment
-    EMERGENCY_WEIGHT = 5.0      # Prioritize emergency vehicles
+    # Safety thresholds
+    MAX_ACCEPTABLE_WAIT = SafetyConfig.MAX_ACCEPTABLE_WAIT
+    EMERGENCY_MAX_WAIT = SafetyConfig.EMERGENCY_MAX_WAIT
     
-    # Penalty thresholds
-    EXCESSIVE_WAIT_THRESHOLD = SignalTiming.MAX_WAIT  # When to apply fairness penalty
-    QUEUE_LENGTH_THRESHOLD = 30   # When queue is considered critical
-    
-    # Normalization factors (for reward scaling)
-    BASELINE_WAIT_TIME = 100      # Expected average wait time
-    BASELINE_THROUGHPUT = 200     # Expected vehicles per episode
+    # Curriculum learning
+    ENABLE_CURRICULUM = True
+    CURRICULUM_STAGES = [
+        {"stage": 0, "scenario": "WEEKEND", "until_step": 66000},
+        {"stage": 1, "scenario": "EVENING_RUSH", "until_step": 133000},
+        {"stage": 2, "scenario": "MORNING_RUSH", "until_step": 200000}
+    ]
 
 
-# =============================================================================
-# CURRICULUM LEARNING PARAMETERS
-# =============================================================================
+# ============================================================================
+# OBSERVATION SPACE PARAMETERS
+# ============================================================================
 
-class CurriculumConfig:
-    """
-    Progressive difficulty scaling for training.
+class ObservationConfig:
+    """Observation space normalization."""
     
-    The agent starts with simple scenarios and gradually faces more complex traffic.
-    """
+    # Normalization constants
+    MAX_QUEUE = 50.0      # Expected max queue length
+    MAX_WAIT = 120.0      # Expected max wait time
     
-    # Curriculum stages definition
-    STAGES = {
-        0: {"max_flow": 400, "complexity": "LOW"},      # Light traffic
-        1: {"max_flow": 600, "complexity": "MEDIUM"},   # Moderate traffic
-        2: {"max_flow": 800, "complexity": "HIGH"}      # Heavy traffic
-    }
+    # Observation components (4-phase)
+    OBS_SIZE = 14  # queues(4) + delta(4) + waits(4) + emergency(1) + phase(1)
     
-    # Stage transition thresholds (timesteps)
-    TRANSITIONS = [50000, 150000, 300000]
-    
-    # Whether to enable curriculum learning
-    ENABLED = True
-
-
-# =============================================================================
-# RESOURCE MANAGEMENT PARAMETERS
-# =============================================================================
-
-class ResourceConfig:
-    """System resource management settings."""
-    
-    # Route file cleanup
-    MAX_ROUTE_FILES = 50        # Maximum route files before cleanup
-    CLEANUP_INTERVAL = 100      # Cleanup every N episodes
-    
-    # Memory management
-    CACHE_SIZE = 1000           # Observation cache size
-    
-    # Process management
-    SUMO_PROCESS_CHECK_INTERVAL = 5  # Check for zombie processes every N episodes
+    # Feature indices (for debugging)
+    QUEUE_START = 0
+    QUEUE_END = 4
+    DELTA_START = 4
+    DELTA_END = 8
+    WAIT_START = 8
+    WAIT_END = 12
+    EMERGENCY_IDX = 12
+    PHASE_IDX = 13
 
 
-# =============================================================================
-# LOGGING AND MONITORING PARAMETERS
-# =============================================================================
+# ============================================================================
+# TRAINING PARAMETERS
+# ============================================================================
 
-class LoggingConfig:
-    """Logging and monitoring configuration."""
+class TrainingConfig:
+    """PPO training hyperparameters."""
     
-    # Log levels
-    DEFAULT_LEVEL = "INFO"      # Options: DEBUG, INFO, WARNING, ERROR
+    # Training duration
+    TOTAL_TIMESTEPS = 200000
     
-    # Log format
-    FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    # PPO hyperparameters
+    LEARNING_RATE = 3e-4
+    N_STEPS = 2048          # Steps per environment per update
+    BATCH_SIZE = 64
+    N_EPOCHS = 10
+    GAMMA = 0.99            # Discount factor
+    GAE_LAMBDA = 0.95
+    CLIP_RANGE = 0.2
+    ENT_COEF = 0.01         # Entropy coefficient
+    VF_COEF = 0.5           # Value function coefficient
+    MAX_GRAD_NORM = 0.5
     
-    # Performance metrics
-    TRACK_PERFORMANCE = True    # Enable performance monitoring
-    METRICS_WINDOW = 100        # Moving average window for metrics
+    # Parallel environments
+    N_ENVS = 4  # Good for RTX 3050
+    
+    # Checkpointing
+    SAVE_FREQ = 25000       # Save every 25K steps
+    EVAL_FREQ = 10000       # Evaluate every 10K steps
+    
+    # Logging
+    LOG_INTERVAL = 1        # Log every update
+    VERBOSE = 1
 
 
-# =============================================================================
+# ============================================================================
+# EVALUATION PARAMETERS
+# ============================================================================
+
+class EvaluationConfig:
+    """Model evaluation settings."""
+    
+    # Episode count
+    N_EVAL_EPISODES = 20
+    
+    # Scenarios to test
+    EVAL_SCENARIOS = ["MORNING_RUSH", "EVENING_RUSH", "WEEKEND"]
+    
+    # Baselines
+    BASELINES = [
+        "Fixed-Timer",      # 30s fixed cycles
+        "Max-Pressure",     # Adaptive pressure-based
+        "IntelliLight-RL"   # Your model
+    ]
+    
+    # Metrics to track
+    METRICS = [
+        "avg_wait_time",
+        "max_wait_time",
+        "throughput",
+        "avg_queue_length",
+        "max_queue_length",
+        "intersection_utilization",
+        "fairness_score",
+        "phase_switches",
+        "phase_switch_frequency",
+        "starvation_events",
+        "max_wait_per_direction"
+    ]
+
+
+# ============================================================================
 # DEPLOYMENT PARAMETERS
-# =============================================================================
+# ============================================================================
 
 class DeploymentConfig:
-    """Real-world deployment settings."""
+    """Production deployment settings."""
     
-    # Failsafe configuration
-    ENABLE_FAILSAFE = True      # Always enable in production
-    FAILSAFE_TIMEOUT = 5.0      # Switch to failsafe if RL takes > 5 seconds
+    # Failsafe mode
+    ENABLE_FAILSAFE = SafetyConfig.ENABLE_FAILSAFE
+    FAILSAFE_FALLBACK = "fixed-timer"  # or "max-pressure"
     
-    # Health monitoring
-    HEALTH_CHECK_INTERVAL = 60  # Check system health every minute
-    MAX_CONSECUTIVE_ERRORS = 3  # Switch to failsafe after N errors
+    # Monitoring
+    LOG_SAFETY_VIOLATIONS = True
+    ALERT_ON_STARVATION = True
     
-    # Model serving
-    MODEL_UPDATE_INTERVAL = 3600  # Check for model updates every hour (production)
-    
-    # Edge device settings (for future deployment)
-    EDGE_DEVICE_MODE = False    # Enable for edge deployment
-    LOW_POWER_MODE = False      # Reduce computation for battery operation
+    # Performance targets (for monitoring)
+    TARGET_AVG_WAIT = 30.0      # seconds
+    TARGET_THROUGHPUT = 600     # vehicles/hour
+    MAX_STARVATION_EVENTS = 0   # ZERO tolerance in production
 
 
-# =============================================================================
-# FILE PATHS (Auto-generated, don't modify)
-# =============================================================================
+# ============================================================================
+# PATHS
+# ============================================================================
 
-class Paths:
-    """Auto-generated paths based on project structure."""
+class PathConfig:
+    """File paths."""
     
-    # Project root
-    ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    # Models
+    MODEL_DIR = "models"
+    CHECKPOINT_DIR = "models/checkpoints"
+    FINAL_MODEL = "models/checkpoints/intellilight_4phase_final.zip"
     
-    # Data directories
-    DATA_DIR = os.path.join(ROOT, "data")
-    ROUTE_DIR = os.path.join(DATA_DIR, SUMOConfig.ROUTE_DIR)
+    # Logs
+    LOG_DIR = "logs"
+    TENSORBOARD_LOG = "logs/tensorboard"
     
-    # Config directories
-    CONFIG_DIR = os.path.join(ROOT, "configs")
-    SUMO_CONFIG_DIR = os.path.join(CONFIG_DIR, "sumo")
+    # Data
+    ROUTES_DIR = "routes"
+    RESULTS_DIR = "results"
     
-    # Model directories
-    MODELS_DIR = os.path.join(ROOT, "models")
-    CHECKPOINTS_DIR = os.path.join(MODELS_DIR, "checkpoints")
-    
-    # Log directories
-    LOGS_DIR = os.path.join(ROOT, "logs")
-    
-    @classmethod
-    def create_directories(cls):
-        """Create all necessary directories if they don't exist."""
-        directories = [
-            cls.DATA_DIR,
-            cls.ROUTE_DIR,
-            cls.CONFIG_DIR,
-            cls.SUMO_CONFIG_DIR,
-            cls.MODELS_DIR,
-            cls.CHECKPOINTS_DIR,
-            cls.LOGS_DIR
-        ]
-        for directory in directories:
-            os.makedirs(directory, exist_ok=True)
+    # SUMO network
+    NETWORK_DIR = "."
+    NETWORK_FILE = "intersection_net.xml"
 
 
-# =============================================================================
-# VALIDATION FUNCTIONS
-# =============================================================================
+# ============================================================================
+# EXPORT ALL CONFIGS
+# ============================================================================
 
-def validate_configuration():
-    """
-    Validates configuration parameters for consistency.
-    
-    Raises:
-        ValueError: If configuration is invalid
-    """
-    # Validate green light durations
-    if SignalTiming.MIN_GREEN not in SignalTiming.GREEN_OPTIONS:
-        raise ValueError(f"MIN_GREEN ({SignalTiming.MIN_GREEN}) must be in GREEN_OPTIONS")
-    
-    # Validate vehicle distribution
-    total_dist = sum(ScenarioConfig.VEHICLE_DISTRIBUTION.values())
-    if not (0.99 <= total_dist <= 1.01):  # Allow floating point error
-        raise ValueError(f"Vehicle distribution must sum to 1.0, got {total_dist}")
-    
-    # Validate observation shape
-    expected_shape = (4 + 4 + 1,)  # queues + waits + emergency
-    if ObservationConfig.SHAPE != expected_shape:
-        raise ValueError(f"Observation shape mismatch: {ObservationConfig.SHAPE} != {expected_shape}")
-    
-    # Validate curriculum stages
-    if len(CurriculumConfig.TRANSITIONS) != len(CurriculumConfig.STAGES):
-        raise ValueError("Number of curriculum transitions must match number of stages")
-    
-    print("✓ Configuration validation passed")
+# Create instances for easy import
+simulation = SimulationConfig()
+signal = SignalConfig()
+traffic = TrafficConfig()
+safety = SafetyConfig()
+reward = RewardConfig()
+observation = ObservationConfig()
+training = TrainingConfig()
+evaluation = EvaluationConfig()
+deployment = DeploymentConfig()
+paths = PathConfig()
 
 
-# =============================================================================
-# INITIALIZATION
-# =============================================================================
+# Convenience function
+def print_config():
+    """Print current configuration."""
+    print("=" * 70)
+    print("INTELLILIGHT 4-PHASE CONFIGURATION")
+    print("=" * 70)
+    
+    print("\n🚦 SIGNAL:")
+    print(f"   Phases: {signal.N_PHASES}")
+    print(f"   Green options: {signal.GREEN_DURATIONS}")
+    print(f"   Min green: {signal.MIN_GREEN}s")
+    print(f"   All-red: {signal.ALL_RED}s")
+    
+    print("\n🚗 TRAFFIC:")
+    print(f"   Base demand: {traffic.BASE_DEMAND} veh/hour")
+    print(f"   Volatility: ±{traffic.VOLATILITY*100:.0f}%")
+    print(f"   Events enabled: {traffic.ENABLE_EVENTS}")
+    
+    print("\n🚨 SAFETY:")
+    print(f"   Max wait: {safety.MAX_ACCEPTABLE_WAIT}s")
+    print(f"   Emergency max: {safety.EMERGENCY_MAX_WAIT}s")
+    print(f"   Failsafe: {safety.ENABLE_FAILSAFE}")
+    
+    print("\n💰 REWARD:")
+    print(f"   Starvation penalty: {reward.WEIGHTS.starvation}")
+    print(f"   Emergency bonus: {reward.WEIGHTS.emergency}")
+    print(f"   Throughput weight: {reward.WEIGHTS.throughput}")
+    
+    print("\n🎓 TRAINING:")
+    print(f"   Total steps: {training.TOTAL_TIMESTEPS:,}")
+    print(f"   Learning rate: {training.LEARNING_RATE}")
+    print(f"   Parallel envs: {training.N_ENVS}")
+    
+    print("\n" + "=" * 70)
 
-# Create directories on import
-Paths.create_directories()
 
-# Optionally validate on import (comment out for production)
 if __name__ == "__main__":
-    validate_configuration()
-    print("\n=== IntelliLight Configuration Summary ===")
-    print(f"SUMO Binary: {SUMOConfig.BINARY}")
-    print(f"Episode Length: {EpisodeConfig.LENGTH}s")
-    print(f"Observation Shape: {ObservationConfig.SHAPE}")
-    print(f"Green Options: {SignalTiming.GREEN_OPTIONS}")
-    print(f"Curriculum Enabled: {CurriculumConfig.ENABLED}")
-    print(f"Route Directory: {Paths.ROUTE_DIR}")
-    print("==========================================\n")
+    print_config()
