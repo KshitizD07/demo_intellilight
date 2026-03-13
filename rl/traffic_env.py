@@ -1,75 +1,67 @@
 """
-IntelliLight Traffic Environment Module - CYCLIC VERSION
-========================================================
+IntelliLight 4-Phase Traffic Environment
+=======================================
 
-DEPLOYABLE CYCLIC TRAFFIC SIGNAL CONTROL
+Realistic 4-phase cyclic traffic signal control:
 
-This version implements CYCLIC signal control where:
-- Each action controls BOTH directions (full cycle)
-- Always alternates: EW → NS → EW → NS (predictable!)
-- Agent decides green durations for each phase
-- Emergency vehicles can adjust durations within cycle
-- Matches real-world deployable traffic controller behavior
+0: EW Through + Right
+1: EW Protected Left
+2: NS Through + Right
+3: NS Protected Left
 
-Key Differences from Acyclic Version:
-1. Action = [ew_duration, ns_duration] (not direction choice)
-2. One step = Complete cycle (both EW and NS phases)
-3. Observation includes current phase indicator
-4. Predictable for drivers (like traditional signals)
+Improvements:
+- Normalized observations
+- Queue delta feature
+- Cumulative throughput tracking
+- Stable reward integration
+- Fixed all-red phase handling
+- Robust emergency vehicle detection
 
-This is the PRODUCTION-READY version for real deployment.
+FIXES APPLIED:
+- Removed incorrect all-red phase calls
+- More robust emergency direction detection
+- Average reward per cycle (not sum)
+- Added lane name verification
 """
 
 import os
-import numpy as np
+import sys
 import gymnasium as gym
+import numpy as np
+from typing import Tuple, Dict, Optional
+import traci
 from gymnasium import spaces
-import logging
-from typing import Optional, Dict, Tuple, Any
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from simulation.sumo_env import SUMOSimulation
 from simulation.route_generator import RouteGenerator
-from rl.reward_function import RewardCalculator
-from configs.parameters import (
-    NetworkTopology, SignalTiming, ObservationConfig,
-    ActionConfig, EpisodeConfig, CurriculumConfig,
-    ResourceConfig, Paths
-)
-
-logger = logging.getLogger(__name__)
+from rl.reward_function import EnhancedRewardCalculator, RewardWeights
 
 
-class TrafficEnv(gym.Env):
+# Configuration
+MIN_GREEN = 10
+ALL_RED = 4
+EPISODE_LENGTH = 1800
+TRAFFIC_LIGHT_ID = "J1"
+
+GREEN_DURATIONS = [10, 15, 20, 25, 30, 35, 40, 45]
+
+MAX_QUEUE = 50.0
+MAX_WAIT = 120.0
+
+
+class TrafficEnv4Phase(gym.Env):
     """
-    CYCLIC Gymnasium environment for deployable traffic signal control.
-    
-    This environment enforces a predictable EW → NS → EW → NS cycle,
-    making it suitable for real-world deployment where drivers need
-    predictability.
-    
-    Observation Space:
-        Box(10,) normalized to [0,1]:
-        - [0:4]: Queue lengths for W, E, N, S
-        - [4:8]: Waiting times for W, E, N, S  
-        - [8]: Emergency vehicle flag
-        - [9]: Current phase (0=about to do EW, 1=about to do NS)
+    4-Phase Cyclic Traffic Signal Environment.
     
     Action Space:
-        MultiDiscrete([16, 16]):
-        - [0]: EW green duration index (0-15 → 15-60s)
-        - [1]: NS green duration index (0-15 → 15-60s)
-        
-        Each action executes a COMPLETE CYCLE:
-        1. EW green for chosen duration
-        2. All-red transition
-        3. NS green for chosen duration  
-        4. All-red transition
-        5. Return to EW (next cycle)
+        MultiDiscrete([8, 8, 8, 8]) - duration index for each of 4 phases
     
-    Reward:
-        Multi-objective combining throughput, efficiency, fairness,
-        wait time, queue length, starvation, and emergency response.
-        Calculated after COMPLETE CYCLE.
+    Observation Space:
+        Box(14,) - normalized [queues(4), delta(4), waits(4), emergency(1), phase(1)]
+    
+    One step = complete cycle through all 4 phases
     """
     
     metadata = {"render_modes": ["human"]}
@@ -77,512 +69,440 @@ class TrafficEnv(gym.Env):
     def __init__(
         self,
         use_gui: bool = False,
+        episode_length: int = EPISODE_LENGTH,
         curriculum_stage: int = 0,
-        sumo_cfg: Optional[str] = None,
+        seed: Optional[int] = None
     ):
         """
-        Initialize the CYCLIC traffic environment.
+        Initialize 4-phase traffic environment.
         
         Args:
-            use_gui: Whether to render SUMO GUI for visualization
-            curriculum_stage: Current curriculum learning stage (0-2)
-            sumo_cfg: Path to SUMO config file (defaults to config)
+            use_gui: Show SUMO GUI
+            episode_length: Episode length in seconds
+            curriculum_stage: Curriculum learning stage (0-2)
+            seed: Random seed
         """
         super().__init__()
         
-        logger.info(
-            f"Initializing CYCLIC TrafficEnv: GUI={use_gui}, "
-            f"curriculum_stage={curriculum_stage}"
-        )
-        
-        # Configuration
         self.use_gui = use_gui
+        self.episode_length = episode_length
         self.curriculum_stage = curriculum_stage
-        self.episode_length = EpisodeConfig.LENGTH
         
-        # Define Gymnasium spaces
-        # CYCLIC OBSERVATION: Added phase indicator (10 features instead of 9)
+        # 4-phase configuration
+        self.n_phases = 4
+        
+        self.phase_names = [
+            "EW Through",
+            "EW Left",
+            "NS Through",
+            "NS Left"
+        ]
+        
+        # SUMO phase IDs (must match your .net.xml file)
+        self.sumo_phases = {
+            0: 0,  # EW through
+            1: 1,  # EW left
+            2: 2,  # NS through
+            3: 3   # NS left
+        }
+        
+        # Action space: duration index for each phase
+        self.green_durations = GREEN_DURATIONS
+        self.n_durations = len(self.green_durations)
+        
+        self.action_space = spaces.MultiDiscrete([self.n_durations] * self.n_phases)
+        
+        # Observation space
+        # queues(4) + queue_delta(4) + wait_times(4) + emergency(1) + phase(1) = 14
         self.observation_space = spaces.Box(
             low=0.0,
             high=1.0,
-            shape=(10,),  # Was 9, now 10 with phase indicator
+            shape=(14,),
             dtype=np.float32
         )
         
-        # CYCLIC ACTION SPACE: [ew_duration_idx, ns_duration_idx]
-        # Agent chooses green time for BOTH directions every cycle
-        self.action_space = spaces.MultiDiscrete([
-            len(SignalTiming.GREEN_OPTIONS),  # EW duration options (16)
-            len(SignalTiming.GREEN_OPTIONS)   # NS duration options (16)
-        ])
-        
-        # Initialize components
-        self.sumo = SUMOSimulation(
-            sumo_cfg=sumo_cfg,
-            use_gui=use_gui
-        )
-        
+        # Initialize SUMO
+        self.sumo = SUMOSimulation(use_gui=use_gui)
         self.route_gen = RouteGenerator()
         
-        self.reward_calc = RewardCalculator(
-            curriculum_stage=curriculum_stage
+        # Initialize reward calculator
+        self.reward_calc = EnhancedRewardCalculator(
+            weights=RewardWeights(),
+            max_acceptable_wait=90,
+            emergency_max_wait=30
         )
         
-        # Episode tracking
-        self.current_step = 0  # Counts complete cycles
-        self.simulation_step = 0  # Counts SUMO steps
-        self.episode_count = 0
-        self.current_route_file = None
-        self.current_phase = 0  # 0=about to do EW, 1=about to do NS
+        self.reward_calc.set_curriculum_stage(curriculum_stage)
         
-        # Performance metrics
-        self.episode_metrics = {
-            'total_reward': 0.0,
-            'total_wait': 0.0,
-            'total_throughput': 0,
-            'emergency_count': 0,
-            'total_cycles': 0  # Track complete cycles
-        }
+        # State tracking
+        self.current_phase = 0
+        self.phase_timer = 0
+        self.simulation_step = 0
+        self.current_step = 0
+        self.cycle_count = 0
         
-        logger.info("CYCLIC TrafficEnv initialized successfully")
-        logger.info(f"Action space: Each action = [EW duration, NS duration]")
-        logger.info(f"One step = Complete cycle (EW→NS)")
+        self.prev_queues = np.zeros(4)
+        
+        self.emergency_active = False
+        self.emergency_direction = -1
+        
+        self.cumulative_arrived = 0
+        
+        self.episode_reward = 0.0
+        
+        # Lane verification flag
+        self._lanes_verified = False
     
     def reset(
         self,
         seed: Optional[int] = None,
-        options: Optional[Dict[str, Any]] = None
-    ) -> Tuple[np.ndarray, Dict[str, Any]]:
-        """
-        Reset the environment for a new episode.
-        
-        Args:
-            seed: Random seed for reproducibility
-            options: Additional options (unused)
-        
-        Returns:
-            tuple: (observation, info)
-                - observation: Initial state (10 features)
-                - info: Episode information
-        """
+        options: Optional[dict] = None
+    ) -> Tuple[np.ndarray, Dict]:
+        """Reset environment for new episode."""
         super().reset(seed=seed)
         
-        self.episode_count += 1
-        self.current_step = 0
-        self.simulation_step = 0
-        self.current_phase = 0  # Start with EW
+        # Reset SUMO
+        self.sumo.reset()
         
-        logger.info(f"Starting episode {self.episode_count}")
+        # Get curriculum scenario
+        scenario = self._get_curriculum_scenario()
         
-        # Periodic cleanup
-        # if self.episode_count % ResourceConfig.CLEANUP_INTERVAL == 0:
-        #     cleaned = self.route_gen.cleanup_old_routes()
-        #     if cleaned > 0:
-        #         logger.info(f"Cleaned up {cleaned} old route files")
-        
-        # Generate new traffic scenario
+        # Generate route file
         self.current_route_file = self.route_gen.generate_unique_filename()
         scenario_info = self.route_gen.generate_route_file(
             self.current_route_file,
-            scenario="RANDOM",
+            scenario=scenario,
             curriculum_stage=self.curriculum_stage
         )
-        
-        logger.info(
-            f"Episode {self.episode_count}: {scenario_info['scenario']} "
-            f"({scenario_info['total_flow']} veh/hour)"
-        )
+        route_file = self.current_route_file
         
         # Start SUMO
-        self.sumo.start(self.current_route_file)
+        self.sumo.start(route_file)
         
-        # Warm-up simulation
-        for _ in range(5):
-            self.sumo.step()
-            self.simulation_step += 1
+        # Verify lane names on first reset
+        if not self._lanes_verified:
+            self._verify_lane_names()
+            self._lanes_verified = True
         
-        # Reset reward calculator
+        # Reset state
+        self.current_phase = 0
+        self.phase_timer = 0
+        self.simulation_step = 0
+        self.current_step = 0
+        self.cycle_count = 0
+        
+        self.prev_queues = np.zeros(4)
+        
+        self.emergency_active = False
+        self.emergency_direction = -1
+        
+        self.cumulative_arrived = 0
+        
         self.reward_calc.reset()
         
-        # Reset metrics
-        self.episode_metrics = {
-            'total_reward': 0.0,
-            'total_wait': 0.0,
-            'total_throughput': 0,
-            'emergency_count': 0,
-            'total_cycles': 0
-        }
-        
-        # Get initial observation (includes phase)
         obs = self._get_observation()
         
-        # Prepare info dict
-        info = {
-            'scenario': scenario_info['scenario'],
-            'traffic_flow': scenario_info['total_flow'],
-            'emergency': scenario_info['emergency'] is not None,
-            'mode': 'CYCLIC'  # Indicate this is cyclic mode
-        }
-        
-        return obs, info
+        return obs, {}
     
-    def step(
-        self,
-        action: np.ndarray
-    ) -> Tuple[np.ndarray, float, bool, bool, Dict[str, Any]]:
+    def step(self, action: np.ndarray):
         """
-        Execute one COMPLETE CYCLE (EW phase + NS phase).
-        
-        This is the key difference from acyclic: one action = both phases.
+        Execute one complete cycle (all 4 phases).
         
         Args:
-            action: [ew_duration_idx, ns_duration_idx]
+            action: [duration_idx_0, duration_idx_1, duration_idx_2, duration_idx_3]
         
         Returns:
-            tuple: (observation, reward, terminated, truncated, info)
-                - observation: State after COMPLETE cycle
-                - reward: Reward for entire cycle
-                - terminated: Episode ended naturally
-                - truncated: Episode ended due to time limit
-                - info: Additional information
+            obs, reward, terminated, truncated, info
         """
-        # Decode action
-        ew_duration_idx = int(action[0])
-        ns_duration_idx = int(action[1])
+        # Convert action indices to actual durations
+        phase_durations = [self.green_durations[i] for i in action]
         
-        ew_duration = SignalTiming.GREEN_OPTIONS[ew_duration_idx]
-        ns_duration = SignalTiming.GREEN_OPTIONS[ns_duration_idx]
+        # Accumulate rewards from all phases
+        total_reward = 0.0
         
-        # Check for emergency vehicle
-        emergency_active = self._detect_emergency()
-        
-        if emergency_active:
-            self.episode_metrics['emergency_count'] += 1
-            logger.debug("Emergency vehicle detected!")
+        # Execute all 4 phases in order
+        for phase_idx in range(self.n_phases):
+            self.current_phase = phase_idx
+            self.phase_timer = 0
             
-            # EMERGENCY OVERRIDE: Adjust durations to prioritize emergency
-            emergency_direction = self._get_emergency_direction()
+            duration = phase_durations[phase_idx]
             
-            if emergency_direction == 0:  # Emergency on EW
-                ew_duration = max(ew_duration, 45)  # Ensure at least 45s
-                ns_duration = min(ns_duration, 20)  # Minimize NS
-                logger.debug(f"Emergency on EW: Extended EW to {ew_duration}s")
-            elif emergency_direction == 1:  # Emergency on NS
-                ns_duration = max(ns_duration, 45)
-                ew_duration = min(ew_duration, 20)
-                logger.debug(f"Emergency on NS: Extended NS to {ns_duration}s")
+            # Set SUMO phase
+            sumo_phase = self.sumo_phases[phase_idx]
+            traci.trafficlight.setPhase(TRAFFIC_LIGHT_ID, sumo_phase)
+            
+            # Execute green phase
+            for _ in range(duration):
+                traci.simulationStep()
+                self.cumulative_arrived += traci.simulation.getArrivedNumber()
+                self.simulation_step += 1
+                self.phase_timer += 1
+                
+                # Check for emergency vehicles
+                self._check_emergency_vehicles()
+            
+            # FIXED: All-red clearance interval
+            # REMOVED incorrect phase switching - let SUMO handle transitions
+            for _ in range(ALL_RED):
+                traci.simulationStep()
+                self.cumulative_arrived += traci.simulation.getArrivedNumber()
+                self.simulation_step += 1
+            
+            # Get traffic state after this phase
+            state = self._get_traffic_state()
+            
+            # Calculate reward for this phase
+            reward = self.reward_calc.calculate_reward(
+                queues=state["queues"],
+                wait_times=state["wait_times"],
+                arrived_count=state["arrived_count"],
+                emergency_active=self.emergency_active,
+                emergency_direction=self.emergency_direction,
+                current_phase=self._map_to_2phase(phase_idx)
+            )
+            
+            total_reward += reward
         
-        # ===== EXECUTE COMPLETE CYCLE =====
+        # FIXED: Average reward per cycle (not sum)
+        # This keeps rewards in reasonable range for PPO
+        avg_reward = total_reward / self.n_phases
         
-        # Phase 1: EW Green
-        self.current_phase = 0  # EW phase active
-        self._apply_traffic_light_action(direction=0, duration=ew_duration)
-        
-        # Phase 2: NS Green
-        self.current_phase = 1  # NS phase active
-        self._apply_traffic_light_action(direction=1, duration=ns_duration)
-        
-        # Back to EW for next cycle
-        self.current_phase = 0
-        
-        # Increment cycle counter
+        self.cycle_count += 1
         self.current_step += 1
-        self.episode_metrics['total_cycles'] += 1
+        self.episode_reward += avg_reward
         
-        # ===== COLLECT METRICS AFTER COMPLETE CYCLE =====
-        
-        queues, wait_times = self._get_traffic_metrics()
-        arrived_count = self.sumo.get_arrived_vehicles()
-        
-        # Calculate reward for ENTIRE CYCLE
-        reward = self.reward_calc.calculate_reward(
-            queues=queues,
-            wait_times=wait_times,
-            arrived_count=arrived_count,
-            current_step=self.current_step,
-            emergency_active=emergency_active,
-            action_direction=None  # No single direction (it's a cycle)
-        )
-        
-        # Update metrics
-        self.episode_metrics['total_reward'] += reward
-        self.episode_metrics['total_wait'] += np.sum(wait_times)
-        self.episode_metrics['total_throughput'] = arrived_count
-        
-        # Get next observation (includes current_phase)
+        # Get final observation
         obs = self._get_observation()
         
         # Check termination
-        terminated = False
-        truncated = self.sumo.get_current_time() >= self.episode_length
+        terminated = self.simulation_step >= self.episode_length
+        truncated = False
         
-        # Prepare info dict
-        info = {
-            'step': self.current_step,
-            'simulation_step': self.simulation_step,
-            'cycle_number': self.current_step,
-            'ew_duration': ew_duration,
-            'ns_duration': ns_duration,
-            'cycle_time': ew_duration + ns_duration + (2 * SignalTiming.ALL_RED),
-            'reward_components': self.reward_calc.get_component_breakdown(),
-            'queues': queues.tolist(),
-            'wait_times': wait_times.tolist(),
-            'emergency': emergency_active,
-            'throughput': arrived_count,
-            'mode': 'CYCLIC'
+        info = self._get_info()
+        
+        return obs, avg_reward, terminated, truncated, info
+    
+    def _map_to_2phase(self, phase):
+        """
+        Map 4-phase to 2-phase for reward calculation.
+        
+        Args:
+            phase: 4-phase index (0-3)
+        
+        Returns:
+            2-phase index (0=EW, 1=NS)
+        """
+        if phase in [0, 1]:  # EW through + EW left
+            return 0  # EW
+        else:                # NS through + NS left
+            return 1  # NS
+    
+    def _get_traffic_state(self):
+        """Get current traffic state from SUMO."""
+        # Lane configuration
+        # IMPORTANT: These MUST match your SUMO network file!
+        lanes = {
+            'N': ['N1_to_J1_0', 'N1_to_J1_1'],
+            'S': ['S1_to_J1_0', 'S1_to_J1_1'],
+            'E': ['E1_to_J1_0', 'E1_to_J1_1'],
+            'W': ['W1_to_J1_0', 'W1_to_J1_1']
         }
         
-        return obs, reward, terminated, truncated, info
-    
-    def _apply_traffic_light_action(self, direction: int, duration: int):
-        """
-        Apply traffic light action and simulate for the duration.
+        queues = []
+        waits = []
         
-        Args:
-            direction: 0=EW, 1=NS
-            duration: Green light duration in seconds
-        """
-        # Set traffic light state (16 characters for the network)
-        if direction == 0:
-            # East-West green
-            state = "rrrrrrrrGGGgGGGg"
-        else:
-            # North-South green
-            state = "GGGgGGGgrrrrrrrr"
-        
-        self.sumo.set_traffic_light_state(
-            NetworkTopology.TRAFFIC_LIGHT_ID,
-            state
-        )
-        
-        # Run simulation for green duration
-        for _ in range(duration):
-            self.sumo.step()
-            self.simulation_step += 1
-        
-        # All-red safety phase
-        self.sumo.set_traffic_light_state(
-            NetworkTopology.TRAFFIC_LIGHT_ID,
-            "rrrrrrrrrrrrrrrr"
-        )
-        
-        for _ in range(SignalTiming.ALL_RED):
-            self.sumo.step()
-            self.simulation_step += 1
-    
-    def _get_observation(self) -> np.ndarray:
-        """
-        Get current traffic state as normalized observation.
-        
-        CYCLIC VERSION: Includes current phase indicator.
-        
-        Returns:
-            np.ndarray: Normalized observation [0, 1] with 10 features
-        """
-        obs = np.zeros(10, dtype=np.float32)  # Was 9, now 10
-        
-        # Get traffic metrics
-        queues, wait_times = self._get_traffic_metrics()
-        
-        # Normalize queue lengths [0, 1]
-        obs[0:4] = np.clip(
-            queues / ObservationConfig.MAX_CARS_ON_LANE,
-            0.0, 1.0
-        )
-        
-        # Normalize wait times [0, 1]
-        obs[4:8] = np.clip(
-            wait_times / ObservationConfig.MAX_WAIT_TIME,
-            0.0, 1.0
-        )
-        
-        # Emergency vehicle flag
-        obs[8] = 1.0 if self._detect_emergency() else 0.0
-        
-        # Current phase indicator (NEW!)
-        # 0 = EW is next, 1 = NS is next
-        obs[9] = float(self.current_phase)
-        
-        return obs
-    
-    def _get_traffic_metrics(self) -> Tuple[np.ndarray, np.ndarray]:
-        """
-        Collect current traffic metrics from SUMO.
-        
-        Returns:
-            tuple: (queues, wait_times) for [W, E, N, S]
-        """
-        queues = np.zeros(4, dtype=np.float32)
-        wait_times = np.zeros(4, dtype=np.float32)
-        
-        for idx, direction in enumerate(["W", "E", "N", "S"]):
-            lanes = NetworkTopology.LANES[direction]
+        for direction in ["N", "S", "E", "W"]:
+            # Queue length (halting vehicles)
+            q = sum(traci.lane.getLastStepHaltingNumber(l) for l in lanes[direction])
+            queues.append(q)
             
-            # Sum vehicle counts across lanes
-            for lane in lanes:
-                queues[idx] += self.sumo.get_lane_vehicle_count(lane)
-                wait_times[idx] += self.sumo.get_lane_waiting_time(lane)
+            # Average wait time
+            vehicles = []
+            for lane in lanes[direction]:
+                vehicles += traci.lane.getLastStepVehicleIDs(lane)
+            
+            if vehicles:
+                w = np.mean([traci.vehicle.getWaitingTime(v) for v in vehicles])
+            else:
+                w = 0.0
+            
+            waits.append(w)
         
-        return queues, wait_times
+        # Cumulative throughput
+        # arrived = traci.simulation.getArrivedNumber()
+        # # self.cumulative_arrived += arrived
+        # if not hasattr(self, '_last_state_call_phase') or self._last_state_call_phase != self.current_phase:
+        #     self.cumulative_arrived += arrived
+        #     self._last_state_call_phase = self.current_phase
+        # self.cumulative_arrived += traci.simulation.getArrivedNumber()
+
+        
+        
+        return {
+            "queues": queues,
+            "wait_times": waits,
+            "arrived_count": self.cumulative_arrived
+        }
     
-    def _detect_emergency(self) -> bool:
+    def _get_observation(self):
         """
-        Detect if an emergency vehicle is present in the simulation.
+        Get normalized observation.
         
         Returns:
-            bool: True if emergency vehicle detected
+            np.ndarray(14,): [queues(4), delta(4), waits(4), emergency(1), phase(1)]
         """
-        vehicle_ids = self.sumo.get_all_vehicle_ids()
+        state = self._get_traffic_state()
         
-        for veh_id in vehicle_ids:
-            veh_type = self.sumo.get_vehicle_type(veh_id)
-            if veh_type == "ambulance":
-                return True
+        queues = np.array(state["queues"], dtype=np.float32)
+        waits = np.array(state["wait_times"], dtype=np.float32)
         
-        return False
+        # Queue delta (change since last observation)
+        delta = queues - self.prev_queues
+        self.prev_queues = queues.copy()
+        
+        # Normalize
+        queues = np.clip(queues / MAX_QUEUE, 0, 1)
+        delta = np.clip(delta / MAX_QUEUE, -1, 1)
+        waits = np.clip(waits / MAX_WAIT, 0, 1)
+        
+        # Combine into observation
+        obs = np.concatenate([
+            queues,                              # 4 features
+            delta,                               # 4 features
+            waits,                               # 4 features
+            [float(self.emergency_active)],      # 1 feature
+            [self.current_phase / 3.0]           # 1 feature (normalized to [0,1])
+        ])
+        
+        return obs.astype(np.float32)
     
-    def _get_emergency_direction(self) -> Optional[int]:
-        """
-        Determine which direction has the emergency vehicle.
+    def _check_emergency_vehicles(self):
+        """Check for emergency vehicles and determine direction."""
+        vehicles = traci.vehicle.getIDList()
         
-        Returns:
-            int: 0=EW, 1=NS, None=no emergency
-        """
-        vehicle_ids = self.sumo.get_all_vehicle_ids()
+        # Find emergency vehicles (prefix with "emergency_")
+        emerg = [v for v in vehicles if v.startswith("emergency_")]
         
-        for veh_id in vehicle_ids:
-            veh_type = self.sumo.get_vehicle_type(veh_id)
-            if veh_type == "ambulance":
-                # Get vehicle route to determine direction
-                route_id = self.sumo.get_vehicle_route(veh_id)
-                
-                # Map route to direction
-                if route_id in ["W_E", "E_W"]:
-                    return 0  # EW direction
-                elif route_id in ["N_S", "S_N"]:
-                    return 1  # NS direction
+        if emerg:
+            self.emergency_active = True
+            
+            # Get lane of first emergency vehicle
+            lane = traci.vehicle.getLaneID(emerg[0])
+            
+            # FIXED: More robust direction detection
+            if "N1_to_J1" in lane or lane.startswith("N"):
+                self.emergency_direction = 0
+            elif "S1_to_J1" in lane or lane.startswith("S"):
+                self.emergency_direction = 1
+            elif "E1_to_J1" in lane or lane.startswith("E"):
+                self.emergency_direction = 2
+            elif "W1_to_J1" in lane or lane.startswith("W"):
+                self.emergency_direction = 3
+            else:
+                # Fallback: check first character
+                if lane and lane[0] in ['N', 'S', 'E', 'W']:
+                    self.emergency_direction = {'N': 0, 'S': 1, 'E': 2, 'W': 3}[lane[0]]
+                else:
+                    print(f"⚠️  Unknown emergency vehicle lane: {lane}")
+                    self.emergency_direction = -1
         
-        return None
-    
-    def render(self):
-        """Render the environment (SUMO GUI handles visualization)."""
-        if self.use_gui:
-            pass  # SUMO GUI is already rendering
         else:
-            logger.warning("Render called but GUI is disabled")
+            self.emergency_active = False
+            self.emergency_direction = -1
+    
+    def _verify_lane_names(self):
+        """
+        Verify that lane names in code match SUMO network.
+        
+        Prints warnings if lanes don't exist.
+        """
+        print("\n🔍 Verifying SUMO lane names...")
+        
+        expected_lanes = [
+            'N1_to_J1_0', 'N1_to_J1_1',
+            'S1_to_J1_0', 'S1_to_J1_1',
+            'E1_to_J1_0', 'E1_to_J1_1',
+            'W1_to_J1_0', 'W1_to_J1_1'
+        ]
+        
+        actual_lanes = traci.lane.getIDList()
+        
+        missing = [l for l in expected_lanes if l not in actual_lanes]
+        
+        if missing:
+            print(f"⚠️  WARNING: Expected lanes not found: {missing}")
+            print(f"   Available lanes: {actual_lanes[:10]}...")  # Show first 10
+            print(f"   You may need to update lane names in _get_traffic_state()")
+        else:
+            print(f"✅ All lane names verified!")
+    
+    def _get_info(self):
+        """Get episode info dict."""
+        state = self._get_traffic_state()
+        
+        return {
+            "queues": state["queues"],
+            "wait_times": state["wait_times"],
+            "arrived": state["arrived_count"],
+            "cycle": self.cycle_count,
+            "sim_time": self.simulation_step,
+            "emergency_active": self.emergency_active,
+            "emergency_direction": self.emergency_direction
+        }
+    
+    def _get_curriculum_scenario(self):
+        """Get scenario based on curriculum stage."""
+        if self.curriculum_stage == 0:
+            return "WEEKEND"
+        elif self.curriculum_stage == 1:
+            return "EVENING_RUSH"
+        else:
+            return "MORNING_RUSH"
     
     def close(self):
-        """Clean up resources."""
-        logger.info("Closing CYCLIC TrafficEnv")
+        """Clean up SUMO simulation."""
         self.sumo.close()
-        
-        # Log final episode metrics if episode was run
-        if self.episode_count > 0:
-            logger.info(
-                f"Episode {self.episode_count} summary: "
-                f"cycles={self.episode_metrics['total_cycles']}, "
-                f"reward={self.episode_metrics['total_reward']:.2f}, "
-                f"throughput={self.episode_metrics['total_throughput']}"
-            )
     
-    def get_episode_metrics(self) -> Dict[str, Any]:
-        """
-        Get metrics for the current episode.
-        
-        Returns:
-            dict: Episode metrics including reward, wait time, throughput, cycles
-        """
-        return self.episode_metrics.copy()
-    
-    def set_curriculum_stage(self, stage: int):
-        """
-        Update curriculum learning stage.
-        
-        Args:
-            stage: New curriculum stage (0-2)
-        """
-        if stage != self.curriculum_stage:
-            self.curriculum_stage = stage
-            self.reward_calc.set_curriculum_stage(stage)
-            logger.info(f"Curriculum stage updated to {stage}")
+    def render(self):
+        """Render is handled by SUMO GUI if use_gui=True."""
+        pass
 
 
+# Testing
 if __name__ == "__main__":
-    """Simple test of the CYCLIC traffic environment."""
-    import sys
+    print("=" * 70)
+    print("4-PHASE TRAFFIC ENVIRONMENT TEST")
+    print("=" * 70)
     
-    logging.basicConfig(level=logging.INFO)
+    env = TrafficEnv4Phase(use_gui=True)
     
-    print("=" * 60)
-    print("Testing CYCLIC TrafficEnv Module")
-    print("=" * 60)
+    obs, info = env.reset()
     
-    try:
-        # Create environment
-        print("\n1. Creating CYCLIC environment...")
-        env = TrafficEnv(use_gui=False, curriculum_stage=0)
-        print("   ✓ Environment created")
-        print(f"   Observation space: {env.observation_space}")
-        print(f"   Action space: {env.action_space}")
-        print(f"   Mode: CYCLIC (predictable EW→NS→EW→NS)")
-        
-        # Reset environment
-        print("\n2. Resetting environment...")
-        obs, info = env.reset()
-        print("   ✓ Environment reset")
-        print(f"   Initial observation shape: {obs.shape}")
-        print(f"   Scenario: {info['scenario']}")
-        print(f"   Traffic flow: {info['traffic_flow']} veh/hour")
-        print(f"   Phase indicator: {obs[9]} (0=EW next, 1=NS next)")
-        
-        # Take some random actions
-        print("\n3. Taking random CYCLIC actions...")
-        total_reward = 0
-        
-        for step in range(10):
-            action = env.action_space.sample()
-            ew_dur = SignalTiming.GREEN_OPTIONS[action[0]]
-            ns_dur = SignalTiming.GREEN_OPTIONS[action[1]]
-            
-            print(f"\n   Cycle {step}: EW={ew_dur}s, NS={ns_dur}s")
-            
-            obs, reward, terminated, truncated, info = env.step(action)
-            total_reward += reward
-            
-            print(f"   → Reward: {reward:.2f}")
-            print(f"   → Throughput: {info['throughput']}")
-            print(f"   → Queues: {info['queues']}")
-            print(f"   → Sim time: {info['simulation_step']}s")
-            
-            if terminated or truncated:
-                print(f"   Episode ended at cycle {step}")
-                break
-        
-        print(f"\n   Total reward: {total_reward:.2f}")
-        
-        # Get episode metrics
-        print("\n4. Episode metrics...")
-        metrics = env.get_episode_metrics()
-        for key, value in metrics.items():
-            print(f"   {key}: {value}")
-        
-        # Close environment
-        print("\n5. Closing environment...")
-        env.close()
-        print("   ✓ Environment closed")
-        
-        print("\n" + "=" * 60)
-        print("CYCLIC system tested successfully!")
-        print("=" * 60)
-        print("\nKey features:")
-        print("✓ Predictable EW→NS cycle")
-        print("✓ Agent controls both durations")
-        print("✓ Emergency override working")
-        print("✓ Phase indicator in observation")
-        print("✓ Ready for deployment!")
-        
-    except Exception as e:
-        print(f"\n✗ Test failed: {e}")
-        import traceback
-        traceback.print_exc()
-        sys.exit(1)
+    print(f"\n📊 Observation shape: {obs.shape}")
+    print(f"   Expected: (14,)")
+    print(f"   ✅ MATCH!" if obs.shape == (14,) else "   ❌ MISMATCH!")
+    
+    print(f"\n🎮 Action space: {env.action_space}")
+    print(f"   4 phases × 8 duration options")
+    
+    print(f"\n🚦 Testing one cycle...")
+    
+    # Random action: [duration_idx for each of 4 phases]
+    action = env.action_space.sample()
+    
+    print(f"   Action: {action}")
+    print(f"   Durations: {[env.green_durations[i] for i in action]}")
+    
+    obs, reward, terminated, truncated, info = env.step(action)
+    
+    print(f"\n📈 Results:")
+    print(f"   Reward: {reward:.2f}")
+    print(f"   Queues: {info['queues']}")
+    print(f"   Wait times: {[f'{w:.1f}s' for w in info['wait_times']]}")
+    print(f"   Cycle: {info['cycle']}")
+    
+    env.close()
+    
+    print("\n" + "=" * 70)
+    print("✅ TEST COMPLETE")
+    print("=" * 70)
