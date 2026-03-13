@@ -2,3 +2,87 @@
 .rou.xml
 
 /data
+
+# ===============================
+# Python
+# ===============================
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.py[cod]
+*.so
+*.egg
+*.egg-info/
+build/
+dist/
+.env
+venv/
+.venv/
+
+
+
+# ===============================
+# Logs
+# ===============================
+logs/
+sih_tensorboard_logs/
+tensorboard/
+*.log
+
+
+
+# ===============================
+# TensorBoard event files
+# ===============================
+events.out.tfevents.*
+
+
+# ===============================
+# Generated route files
+# ===============================
+routes/*.rou.xml
+data/data/generated_routes/
+
+
+# ===============================
+# Model checkpoints
+# ===============================
+models/checkpoints/*
+
+# ===============================
+# Evaluation outputs
+# ===============================
+evaluation_results.json
+final_results.json
+
+# ===============================
+# Temporary SUMO files
+# ===============================
+*.trip.xml
+*.fcd.xml
+*.sumocfg.tmp
+
+# ===============================
+# OS files
+# ===============================
+.DS_Store
+Thumbs.db
+
+# ===============================
+# IDE files
+# ===============================
+.vscode/
+.idea/
+
+# ===============================
+# Cache folders
+# ===============================
+**/__pycache__/
+
+/__pycache__
+
+.cpython-313.pyc
+
+
+

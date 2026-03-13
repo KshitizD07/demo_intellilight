@@ -27,7 +27,7 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from stable_baselines3 import PPO
-from rl.traffic_env import TrafficEnv
+from rl.traffic_env import TrafficEnv4Phase
 from training.baseline_controllers import (
     MaxPressureController,
     FixedTimerController,

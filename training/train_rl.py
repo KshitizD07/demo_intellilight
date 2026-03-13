@@ -34,7 +34,7 @@ from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.monitor import Monitor
 
-from rl.traffic_env import TrafficEnv
+from rl.traffic_env import TrafficEnv4Phase
 from configs.parameters import TrainingConfig, Paths
 
 
@@ -301,7 +301,7 @@ def make_env(use_gui: bool = False, curriculum_stage: int = 0, rank: int = 0):
         callable: Function that creates the environment
     """
     def _init():
-        env = TrafficEnv(
+        env = TrafficEnv4Phase(
             use_gui=use_gui and rank == 0,  # Only show GUI for first env
             curriculum_stage=curriculum_stage
         )

@@ -27,7 +27,7 @@ class SimulationConfig:
     STEP_LENGTH = 1.0      # SUMO time step (seconds)
     
     # Network
-    SUMO_CONFIG_FILE = "intersection.sumocfg"
+    SUMO_CONFIG_FILE = "configs/sumo/intersection.sumocfg"
     TRAFFIC_LIGHT_ID = "J1"
     
     # GUI

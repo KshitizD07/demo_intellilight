@@ -17,7 +17,7 @@ import logging
 from typing import Tuple, Dict, Optional
 from abc import ABC, abstractmethod
 
-from configs.parameters import SignalTiming
+from configs.parameters import signal
 
 logger = logging.getLogger(__name__)
 
@@ -163,6 +163,7 @@ class MaxPressureController(TrafficController):
             ew_duration = self._calculate_green_time(ew_pressure)
             ns_duration = self._calculate_green_time(ns_pressure)
             
+            
             # Anti-starvation: Ensure minimum time for starving direction
             if ew_starving:
                 ew_duration = max(ew_duration, self.base_green)
@@ -183,11 +184,11 @@ class MaxPressureController(TrafficController):
             ns_idx = self._duration_to_index(ns_duration)
             
             # Update service times (both served in cycle)
-            self.current_time += ew_duration + ns_duration + (2 * SignalTiming.ALL_RED)
+            self.current_time += ew_duration + ns_duration + (2 * signal.ALL_RED)
             self.last_served_time['EW'] = self.current_time
             self.last_served_time['NS'] = self.current_time
             
-            return (ew_idx, ns_idx)
+            return (ew_idx, ew_idx, ns_idx, ns_idx)
         
         else:
             # ACYCLIC: Choose one direction per action
@@ -217,7 +218,7 @@ class MaxPressureController(TrafficController):
                     duration = self.max_green
             
             # Update service time
-            self.current_time += duration + SignalTiming.ALL_RED
+            self.current_time += duration + signal.ALL_RED
             if direction == 0:
                 self.last_served_time['EW'] = self.current_time
             else:
@@ -258,10 +259,10 @@ class MaxPressureController(TrafficController):
             duration: Desired green duration in seconds
         
         Returns:
-            int: Index into SignalTiming.GREEN_OPTIONS
+            int: Index into signal.GREEN_DURATIONS
         """
         # Find closest duration in available options
-        options = np.array(SignalTiming.GREEN_OPTIONS)
+        options = np.array(signal.GREEN_DURATIONS)
         idx = np.argmin(np.abs(options - duration))
         return int(idx)
     
@@ -329,7 +330,7 @@ class FixedTimerController(TrafficController):
             # Return fixed durations
             ew_idx = self._duration_to_index(self.ew_duration)
             ns_idx = self._duration_to_index(self.ns_duration)
-            return (ew_idx, ns_idx)
+            return (ew_idx, ew_idx, ns_idx, ns_idx)
         else:
             # Alternate between phases
             direction = self.phase
@@ -343,7 +344,7 @@ class FixedTimerController(TrafficController):
     
     def _duration_to_index(self, duration: int) -> int:
         """Convert duration to index."""
-        options = np.array(SignalTiming.GREEN_OPTIONS)
+        options = np.array(signal.GREEN_DURATIONS)
         idx = np.argmin(np.abs(options - duration))
         return int(idx)
     
@@ -430,8 +431,8 @@ if __name__ == "__main__":
     
     action = mp.select_action(obs)
     print(f"   Heavy EW traffic → Action: {action}")
-    print(f"   EW duration: {SignalTiming.GREEN_OPTIONS[action[0]]}s")
-    print(f"   NS duration: {SignalTiming.GREEN_OPTIONS[action[1]]}s")
+    print(f"   EW duration: {signal.GREEN_DURATIONS[action[0]]}s")
+    print(f"   NS duration: {signal.GREEN_DURATIONS[action[1]]}s")
     print(f"   Expected: EW > NS ✓" if action[0] > action[1] else "   FAIL")
     
     # Test Fixed-Timer
@@ -440,8 +441,8 @@ if __name__ == "__main__":
     
     action = ft.select_action(obs)
     print(f"   Action: {action}")
-    print(f"   EW duration: {SignalTiming.GREEN_OPTIONS[action[0]]}s")
-    print(f"   NS duration: {SignalTiming.GREEN_OPTIONS[action[1]]}s")
+    print(f"   EW duration: {signal.GREEN_DURATIONS[action[0]]}s")
+    print(f"   NS duration: {signal.GREEN_DURATIONS[action[1]]}s")
     print(f"   Expected: Both 30s ✓")
     
     print("\n" + "=" * 60)

@@ -17,7 +17,7 @@ import logging
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass, asdict
 
-from rl.traffic_env import TrafficEnv
+from rl.traffic_env import TrafficEnv4Phase
 from training.baseline_controllers import TrafficController
 from training.metrics_calculator import MetricsCalculator, EpisodeMetrics
 
@@ -48,7 +48,7 @@ class EvaluationEngine:
     
     def __init__(
         self,
-        env: Optional[TrafficEnv] = None,
+        env: Optional[TrafficEnv4Phase] = None,
         metrics_calculator: Optional[MetricsCalculator] = None
     ):
         """
@@ -93,7 +93,7 @@ class EvaluationEngine:
         
         # Create environment if needed
         if self.env is None:
-            self.env = TrafficEnv(
+            self.env = TrafficEnv4Phase(
                 use_gui=use_gui,
                 curriculum_stage=curriculum_stage
             )
@@ -152,6 +152,7 @@ class EvaluationEngine:
         wait_times_history = []
         actions_history = []
         info_history = []
+        phase_history = []
         
         done = False
         truncated = False
@@ -162,6 +163,8 @@ class EvaluationEngine:
             
             # Step environment
             obs, reward, done, truncated, info = self.env.step(action)
+            phase = self.env.current_phase
+            phase_history.append(phase)
             
             # Record data
             queues_history.append(info['queues'])
@@ -170,13 +173,15 @@ class EvaluationEngine:
             info_history.append(info)
         
         # Get final throughput
-        final_throughput = info['throughput']
+        # final_throughput = info['throughput']
+        final_throughput = info.get('arrived', 0)
         
         episode_data = {
             'queues': queues_history,
             'wait_times': wait_times_history,
             'throughput': final_throughput,
             'actions': actions_history,
+            'phases': phase_history,
             'info': info_history
         }
         

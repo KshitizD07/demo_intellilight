@@ -150,7 +150,12 @@ class MetricsCalculator:
         # ===== SAFETY METRICS =====
         
         # Phase switch frequency (for cyclic: always 2 per action, for acyclic: count changes)
-        metrics.phase_switches = self._count_phase_switches(actions, infos)
+        # metrics.phase_switches = self._count_phase_switches(actions, infos)
+        phases = episode_data.get('phases', [])
+        metrics.phase_switches = sum(
+            1 for i in range(1, len(phases))
+            if phases[i] != phases[i-1]
+        )
         
         if metrics.episode_length > 0:
             # Switches per minute

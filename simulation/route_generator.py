@@ -26,11 +26,9 @@ from typing import Dict, Optional, Tuple
 
 # Import configuration
 from configs.parameters import (
-    ScenarioConfig,
-    EpisodeConfig,
-    CurriculumConfig,
-    ResourceConfig,
-    Paths
+    traffic,
+    simulation,
+    paths
 )
 
 # Setup logging
@@ -88,13 +86,15 @@ def generate_route_file(
     
     # Select scenario if random
     if scenario == "RANDOM":
-        scenario = random.choice(ScenarioConfig.SCENARIOS)
+        scenario = random.choice(list(traffic.SCENARIOS.keys()))
     
     # Calculate traffic volume based on curriculum stage
-    if CurriculumConfig.ENABLED:
-        base_multiplier = CurriculumConfig.STAGES[curriculum_stage]["max_flow"] / 400.0
-    else:
-        base_multiplier = 1.0
+    # if True:
+    #     base_multiplier = CurriculumConfig.STAGES[curriculum_stage]["max_flow"] / 400.0
+    # else:
+    #     base_multiplier = 1.0
+    curriculum_max_flows = [600, 1100, 1200]
+    base_multiplier = curriculum_max_flows[curriculum_stage] / 400.0
     
     final_multiplier = base_multiplier * complexity_multiplier
     
@@ -131,20 +131,58 @@ def generate_route_file(
         raise
 
 
+# def _get_flow_definitions(scenario: str, multiplier: float) -> Dict[str, Tuple[int, int]]:
+#     """
+#     Get flow definitions for a traffic scenario.
+    
+#     Args:
+#         scenario: Scenario name
+#         multiplier: Multiplier for traffic volume
+    
+#     Returns:
+#         Dictionary with flow ranges: {"major_in": (min, max), ...}
+#     """
+#     base_volumes = ScenarioConfig.TRAFFIC_VOLUMES[scenario]
+    
+#     # Apply multiplier to all volume ranges
+#     flow_defs = {}
+#     for key, (min_val, max_val) in base_volumes.items():
+#         flow_defs[key] = (
+#             int(min_val * multiplier),
+#             int(max_val * multiplier)
+#         )
+    
+#     return flow_defs
+
 def _get_flow_definitions(scenario: str, multiplier: float) -> Dict[str, Tuple[int, int]]:
-    """
-    Get flow definitions for a traffic scenario.
     
-    Args:
-        scenario: Scenario name (must be in ScenarioConfig.TRAFFIC_VOLUMES)
-        multiplier: Multiplier for traffic volume
+    # Traffic volumes defined inline (replacing old ScenarioConfig.TRAFFIC_VOLUMES)
+    TRAFFIC_VOLUMES = {
+        "WEEKEND": {
+            "major_in":  (200, 400),
+            "major_out": (200, 400),
+            "minor":     (100, 200)
+        },
+        "MORNING_RUSH": {
+            "major_in":  (600, 900),
+            "major_out": (200, 400),
+            "minor":     (200, 400)
+        },
+        "EVENING_RUSH": {
+            "major_in":  (200, 400),
+            "major_out": (600, 900),
+            "minor":     (200, 400)
+        },
+        "NIGHT": {
+            "major_in":  (50, 150),
+            "major_out": (50, 150),
+            "minor":     (30, 100)
+        }
+    }
     
-    Returns:
-        Dictionary with flow ranges: {"major_in": (min, max), ...}
-    """
-    base_volumes = ScenarioConfig.TRAFFIC_VOLUMES[scenario]
+    # Fallback to WEEKEND if scenario not found
+    base_volumes = TRAFFIC_VOLUMES.get(scenario, TRAFFIC_VOLUMES["WEEKEND"])
     
-    # Apply multiplier to all volume ranges
     flow_defs = {}
     for key, (min_val, max_val) in base_volumes.items():
         flow_defs[key] = (
@@ -238,13 +276,13 @@ def _write_traffic_flows(f, flows: Dict[str, int]):
     
     # Use car type for regular flows (could be extended to mix vehicle types)
     f.write(f'  <flow id="flow_WE" type="car" route="W_E" '
-            f'begin="0" end="{EpisodeConfig.LENGTH}" vehsPerHour="{flows["W_E"]}"/>\n')
+            f'begin="0" end="{simulation.EPISODE_LENGTH}" vehsPerHour="{flows["W_E"]}"/>\n')
     f.write(f'  <flow id="flow_EW" type="car" route="E_W" '
-            f'begin="0" end="{EpisodeConfig.LENGTH}" vehsPerHour="{flows["E_W"]}"/>\n')
+            f'begin="0" end="{simulation.EPISODE_LENGTH}" vehsPerHour="{flows["E_W"]}"/>\n')
     f.write(f'  <flow id="flow_NS" type="car" route="N_S" '
-            f'begin="0" end="{EpisodeConfig.LENGTH}" vehsPerHour="{flows["N_S"]}"/>\n')
+            f'begin="0" end="{simulation.EPISODE_LENGTH}" vehsPerHour="{flows["N_S"]}"/>\n')
     f.write(f'  <flow id="flow_SN" type="car" route="S_N" '
-            f'begin="0" end="{EpisodeConfig.LENGTH}" vehsPerHour="{flows["S_N"]}"/>\n')
+            f'begin="0" end="{simulation.EPISODE_LENGTH}" vehsPerHour="{flows["S_N"]}"/>\n')
 
 
 def _write_emergency_vehicle(f) -> Optional[Dict]:
@@ -258,11 +296,11 @@ def _write_emergency_vehicle(f) -> Optional[Dict]:
         Emergency vehicle info dict if generated, None otherwise
     """
     # Randomly decide whether to include emergency vehicle
-    if random.random() < ScenarioConfig.EMERGENCY_PROB_EP:
+    if random.random() < traffic.EVENT_PROBABILITY:
         f.write('\n  <!-- Emergency Vehicle -->\n')
         
         # Random departure time and route
-        depart_time = random.randint(*ScenarioConfig.EMERGENCY_DEPART_RANGE)
+        depart_time = random.randint(*(60, 1500))
         route = random.choice(["W_E", "E_W", "N_S", "S_N"])
         vehicle_id = f"ambulance_{uuid.uuid4().hex[:8]}"
         
@@ -311,9 +349,9 @@ def cleanup_old_routes(
     """
     # Use defaults from config if not specified
     if route_dir is None:
-        route_dir = Paths.ROUTE_DIR
+        route_dir = paths.ROUTES_DIR
     if max_files is None:
-        max_files = ResourceConfig.MAX_ROUTE_FILES
+        max_files = 50
     
     try:
         # Find all route files
@@ -366,7 +404,7 @@ def get_route_file_stats(route_dir: Optional[str] = None) -> Dict:
         }
     """
     if route_dir is None:
-        route_dir = Paths.ROUTE_DIR
+        route_dir = paths.ROUTES_DIR
     
     try:
         pattern = os.path.join(route_dir, "route_*.rou.xml")
@@ -418,7 +456,7 @@ def generate_unique_filename(route_dir: Optional[str] = None) -> str:
         data/generated_routes/route_a3f2b1c4.rou.xml
     """
     if route_dir is None:
-        route_dir = Paths.ROUTE_DIR
+        route_dir = paths.ROUTES_DIR
     
     # Ensure directory exists
     os.makedirs(route_dir, exist_ok=True)
@@ -484,7 +522,7 @@ class RouteGenerator:
         from pathlib import Path
         from configs.parameters import ResourceConfig
         max_files=max_files or ResourceConfig.MAX_ROUTE_FILES
-        route_dir = Path(Paths.ROUTE_DIR)
+        route_dir = Path(paths.ROUTES_DIR)
         route_files=list(route_dir.glob("route_*.rou.xml"))
         route_files.sort(key=lambda f: f.stat().st_mtime)
         num_to_delete=max(0, len(route_files)-max_files)
@@ -502,7 +540,7 @@ class RouteGenerator:
         return deleted
 
 # Ensure route directory exists when module is imported
-os.makedirs(Paths.ROUTE_DIR, exist_ok=True)
+os.makedirs(paths.ROUTES_DIR, exist_ok=True)
 
 if __name__ == "__main__":
     # Simple test if run directly

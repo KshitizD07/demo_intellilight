@@ -235,6 +235,8 @@ class TrafficEnv4Phase(gym.Env):
             for _ in range(duration):
                 traci.simulationStep()
                 self.cumulative_arrived += traci.simulation.getArrivedNumber()
+                # arrived_ids = traci.simulation.getArrivedIDList()
+                # self.cumulative_arrived += len(arrived_ids)
                 self.simulation_step += 1
                 self.phase_timer += 1
                 
@@ -320,6 +322,8 @@ class TrafficEnv4Phase(gym.Env):
             vehicles = []
             for lane in lanes[direction]:
                 vehicles += traci.lane.getLastStepVehicleIDs(lane)
+
+            # print(direction, len(vehicles))
             
             if vehicles:
                 w = np.mean([traci.vehicle.getWaitingTime(v) for v in vehicles])
@@ -447,7 +451,15 @@ class TrafficEnv4Phase(gym.Env):
             "cycle": self.cycle_count,
             "sim_time": self.simulation_step,
             "emergency_active": self.emergency_active,
-            "emergency_direction": self.emergency_direction
+            "emergency_direction": self.emergency_direction,
+            "max_wait_per_direction": {
+                "N": state["wait_times"][0],
+                "S": state["wait_times"][1],
+                "E": state["wait_times"][2],
+                "W": state["wait_times"][3]
+            },
+            "phase_switches": self.cycle_count * 4  # 4 phase switches per cycle
+
         }
     
     def _get_curriculum_scenario(self):
