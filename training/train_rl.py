@@ -65,7 +65,7 @@ class ProgressCallback(BaseCallback):
         self.start_time = datetime.now()
         if self.verbose >= 1:
             print("\n" + "=" * 70)
-            print("🚀 TRAINING STARTED")
+            print(" TRAINING STARTED")
             print("=" * 70)
             print(f"Start time: {self.start_time.strftime('%Y-%m-%d %H:%M:%S')}")
             print(f"Total timesteps: {self.locals.get('total_timesteps', 'unknown')}")
@@ -88,7 +88,7 @@ class ProgressCallback(BaseCallback):
                 ep_rew_mean = self.locals.get('ep_rew_mean', 'N/A')
                 ep_len_mean = self.locals.get('ep_len_mean', 'N/A')
                 
-                print(f"⏱️  Timestep {self.num_timesteps:,} | "
+                print(f"  Timestep {self.num_timesteps:,} | "
                       f"Elapsed: {elapsed_str} | "
                       f"Reward: {ep_rew_mean if ep_rew_mean == 'N/A' else f'{ep_rew_mean:.2f}'} | "
                       f"Ep Length: {ep_len_mean if ep_len_mean == 'N/A' else f'{ep_len_mean:.1f}'}")
@@ -102,7 +102,7 @@ class ProgressCallback(BaseCallback):
             total_time_str = str(total_time).split('.')[0]
             
             print("\n" + "=" * 70)
-            print("✅ TRAINING COMPLETED")
+            print(" TRAINING COMPLETED")
             print("=" * 70)
             print(f"Total time: {total_time_str}")
             print(f"Total timesteps: {self.num_timesteps:,}")
@@ -141,7 +141,7 @@ class CurriculumCallback(BaseCallback):
             
             if self.verbose >= 1:
                 print(f"\n{'=' * 70}")
-                print(f"📈 CURRICULUM PROGRESSION: Stage {self.current_stage}")
+                print(f" CURRICULUM PROGRESSION: Stage {self.current_stage}")
                 print(f"{'=' * 70}\n")
             
             # Update all environments to new stage
@@ -152,7 +152,7 @@ class CurriculumCallback(BaseCallback):
                 try:
                     self.training_env.set_curriculum_stage(self.current_stage)
                 except Exception as e:
-                    print(f"⚠️  Warning: Could not set curriculum stage on environment: {e}")
+                    print(f"  Warning: Could not set curriculum stage on environment: {e}")
                 # Single environment
                 
         
@@ -394,7 +394,7 @@ def print_training_config(args, log_dir: str, checkpoint_dir: str):
         checkpoint_dir: Checkpoint save directory
     """
     print("\n" + "=" * 70)
-    print("🎯 INTELLILIGHT TRAINING CONFIGURATION")
+    print(" INTELLILIGHT TRAINING CONFIGURATION")
     print("=" * 70)
     print(f"Training timesteps:     {args.timesteps:,}")
     print(f"Checkpoint frequency:   Every {args.save_freq:,} steps")
@@ -426,26 +426,26 @@ def train(args):
     print_training_config(args, log_dir, checkpoint_dir)
     
     # Create environment
-    print("🔧 Initializing environment...")
+    print(" Initializing environment...")
     env = create_vectorized_env(
         n_envs=args.n_envs,
         use_gui=args.gui,
         curriculum_stage=args.curriculum_stage
     )
-    print(f"✓ Environment initialized ({args.n_envs} parallel instance{'s' if args.n_envs > 1 else ''})")
+    print(f" Environment initialized ({args.n_envs} parallel instance{'s' if args.n_envs > 1 else ''})")
     
     # Create or load model
     if args.checkpoint:
-        print(f"\n📂 Loading checkpoint: {args.checkpoint}")
+        print(f"\n Loading checkpoint: {args.checkpoint}")
         model = PPO.load(
             args.checkpoint,
             env=env,
             verbose=args.verbose,
             tensorboard_log=log_dir
         )
-        print("✓ Checkpoint loaded successfully")
+        print(" Checkpoint loaded successfully")
     else:
-        print("\n🤖 Creating new PPO model...")
+        print("\n Creating new PPO model...")
         model = PPO(
             policy="MlpPolicy",
             env=env,
@@ -462,7 +462,7 @@ def train(args):
             verbose=args.verbose,
             tensorboard_log=log_dir
         )
-        print("✓ Model created successfully")
+        print(" Model created successfully")
     
     # Setup callbacks
     callbacks = setup_callbacks(
@@ -475,7 +475,7 @@ def train(args):
     
     # Train
     print("\n" + "=" * 70)
-    print("🏋️  BEGINNING TRAINING")
+    print("  BEGINNING TRAINING")
     print("=" * 70)
     
     try:
@@ -485,20 +485,20 @@ def train(args):
             progress_bar=True
         )
     except KeyboardInterrupt:
-        print("\n\n⚠️  Training interrupted by user (Ctrl+C)")
+        print("\n\n  Training interrupted by user (Ctrl+C)")
     finally:
         # Save final model
         final_model_path = os.path.join(checkpoint_dir, f"{args.model_name}_final.zip")
         model.save(final_model_path)
-        print(f"\n💾 Final model saved: {final_model_path}")
+        print(f"\n Final model saved: {final_model_path}")
         
         # Clean up
         env.close()
-        print("✓ Environment closed")
+        print(" Environment closed")
     
     # Print completion message
     print("\n" + "=" * 70)
-    print("🎉 TRAINING SESSION COMPLETE!")
+    print(" TRAINING SESSION COMPLETE!")
     print("=" * 70)
     print(f"\nTo view training metrics:")
     print(f"  tensorboard --logdir {log_dir}")
@@ -514,7 +514,7 @@ def main():
     try:
         train(args)
     except Exception as e:
-        print(f"\n❌ ERROR: Training failed with exception:")
+        print(f"\n ERROR: Training failed with exception:")
         print(f"{type(e).__name__}: {e}")
         import traceback
         traceback.print_exc()

@@ -133,9 +133,22 @@ class MaxPressureController(TrafficController):
             tuple: Action indices for the environment
         """
         # Parse observation
-        queues = observation[0:4] * 50.0  # Denormalize (assume max=50)
-        wait_times = observation[4:8] * 1800.0  # Denormalize
-        emergency = observation[8] > 0.5
+        n_intersections = max(1, observation.size // 14)
+        
+        # Aggregate queues and wait times across all intersections
+        total_queues = np.zeros(4)
+        total_wait_times = np.zeros(4)
+        emergency = False
+        
+        for i in range(n_intersections):
+            local_obs = observation[i*14 : (i+1)*14]
+            total_queues += local_obs[0:4] * 50.0
+            total_wait_times += local_obs[8:12] * 120.0  # Denormalize
+            if local_obs[12] > 0.5:
+                emergency = True
+                
+        queues = total_queues
+        wait_times = total_wait_times
         
         # Calculate queue pressure for each direction
         ew_queue = queues[0] + queues[1]  # West + East
@@ -188,7 +201,7 @@ class MaxPressureController(TrafficController):
             self.last_served_time['EW'] = self.current_time
             self.last_served_time['NS'] = self.current_time
             
-            return (ew_idx, ew_idx, ns_idx, ns_idx)
+            return (ew_idx, ew_idx, ns_idx, ns_idx) * n_intersections
         
         else:
             # ACYCLIC: Choose one direction per action
@@ -227,13 +240,13 @@ class MaxPressureController(TrafficController):
             # Convert to action
             duration_idx = self._duration_to_index(duration)
             
-            return (direction, duration_idx)
+            return (direction, duration_idx) * n_intersections
     
     def _calculate_green_time(self, pressure: float) -> int:
         """
         Calculate green duration based on pressure.
         
-        Higher pressure → longer green time
+        Higher pressure  longer green time
         
         Args:
             pressure: Combined queue + wait pressure
@@ -326,11 +339,13 @@ class FixedTimerController(TrafficController):
         Returns:
             tuple: Fixed action
         """
+        n_intersections = max(1, observation.size // 14) if observation is not None else 1
+        
         if self.cyclic_mode:
             # Return fixed durations
             ew_idx = self._duration_to_index(self.ew_duration)
             ns_idx = self._duration_to_index(self.ns_duration)
-            return (ew_idx, ew_idx, ns_idx, ns_idx)
+            return (ew_idx, ew_idx, ns_idx, ns_idx) * n_intersections
         else:
             # Alternate between phases
             direction = self.phase
@@ -340,7 +355,7 @@ class FixedTimerController(TrafficController):
             # Toggle phase for next call
             self.phase = 1 - self.phase
             
-            return (direction, duration_idx)
+            return (direction, duration_idx) * n_intersections
     
     def _duration_to_index(self, duration: int) -> int:
         """Convert duration to index."""
@@ -430,10 +445,10 @@ if __name__ == "__main__":
     ])
     
     action = mp.select_action(obs)
-    print(f"   Heavy EW traffic → Action: {action}")
+    print(f"   Heavy EW traffic  Action: {action}")
     print(f"   EW duration: {signal.GREEN_DURATIONS[action[0]]}s")
     print(f"   NS duration: {signal.GREEN_DURATIONS[action[1]]}s")
-    print(f"   Expected: EW > NS ✓" if action[0] > action[1] else "   FAIL")
+    print(f"   Expected: EW > NS " if action[0] > action[1] else "   FAIL")
     
     # Test Fixed-Timer
     print("\n2. Testing Fixed-Timer Controller")
@@ -443,7 +458,7 @@ if __name__ == "__main__":
     print(f"   Action: {action}")
     print(f"   EW duration: {signal.GREEN_DURATIONS[action[0]]}s")
     print(f"   NS duration: {signal.GREEN_DURATIONS[action[1]]}s")
-    print(f"   Expected: Both 30s ✓")
+    print(f"   Expected: Both 30s ")
     
     print("\n" + "=" * 60)
     print("Baseline controllers working correctly!")

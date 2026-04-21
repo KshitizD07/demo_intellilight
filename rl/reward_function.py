@@ -12,7 +12,7 @@ Improved production reward function with:
 
 FIXES APPLIED:
 - Corrected starvation penalty logic (removed double-negative)
-- Reduced throughput multiplier (5.0 → 2.0)
+- Reduced throughput multiplier (5.0  2.0)
 - Simplified efficiency reward
 """
 
@@ -207,7 +207,7 @@ class EnhancedRewardCalculator:
                 excess = wait - 60
                 
                 # Exponential penalty: -8.0 * (excess^1.3)
-                # Example: 102s wait → -8.0 * (42^1.3) = -952
+                # Example: 102s wait  -8.0 * (42^1.3) = -952
                 penalty = self.weights.starvation * (excess ** 1.3)
                 total_penalty += penalty
                 
@@ -316,7 +316,7 @@ if __name__ == "__main__":
     calc = EnhancedRewardCalculator()
     
     # Test Case 1: Normal operation
-    print("\n📊 TEST 1: Normal Operation")
+    print("\n TEST 1: Normal Operation")
     print("-" * 70)
     
     queues = [10, 12, 8, 10]  # Balanced
@@ -330,7 +330,7 @@ if __name__ == "__main__":
     print(f"Total Reward: {reward:.2f}")
     
     # Test Case 2: Starvation scenario
-    print("\n🚨 TEST 2: Starvation (102s wait)")
+    print("\n TEST 2: Starvation (102s wait)")
     print("-" * 70)
     
     calc.reset()
@@ -346,7 +346,7 @@ if __name__ == "__main__":
     print(f"Starvation events: {calc.starvation_events}")
     
     # Test Case 3: Emergency vehicle
-    print("\n🚑 TEST 3: Emergency Vehicle (has green)")
+    print("\n TEST 3: Emergency Vehicle (has green)")
     print("-" * 70)
     
     calc.reset()
@@ -365,7 +365,7 @@ if __name__ == "__main__":
     print(f"Total Reward: {reward:.2f} (+100 emergency bonus!)")
     
     # Test Case 4: Emergency vehicle waiting
-    print("\n🚑 TEST 4: Emergency Vehicle (waiting)")
+    print("\n TEST 4: Emergency Vehicle (waiting)")
     print("-" * 70)
     
     calc.reset()
@@ -384,5 +384,5 @@ if __name__ == "__main__":
     print(f"Total Reward: {reward:.2f} (-200 penalty!)")
     
     print("\n" + "=" * 70)
-    print("✅ ALL TESTS COMPLETE")
+    print(" ALL TESTS COMPLETE")
     print("=" * 70)

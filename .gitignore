@@ -1,7 +1,4 @@
-.xml
-.rou.xml
-
-/data
+# Ignore generated output files (see below for specific rules)/data
 
 # ===============================
 # Python

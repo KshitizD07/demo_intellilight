@@ -201,13 +201,20 @@ def _randomize_flows(flow_defs: Dict[str, Tuple[int, int]]) -> Dict[str, int]:
         flow_defs: Dictionary with flow ranges
     
     Returns:
-        Dictionary with actual flow values: {"W_E": 650, "E_W": 320, ...}
+        Dictionary with actual flow values for arterial + all cross-streets
     """
     return {
         "W_E": random.randint(*flow_defs["major_in"]),
         "E_W": random.randint(*flow_defs["major_out"]),
+        # J1 cross-streets
         "N_S": random.randint(*flow_defs["minor"]),
-        "S_N": random.randint(*flow_defs["minor"])
+        "S_N": random.randint(*flow_defs["minor"]),
+        # J2 cross-streets
+        "N_S_J2": random.randint(*flow_defs["minor"]),
+        "S_N_J2": random.randint(*flow_defs["minor"]),
+        # J3 cross-streets
+        "N_S_J3": random.randint(*flow_defs["minor"]),
+        "S_N_J3": random.randint(*flow_defs["minor"]),
     }
 
 
@@ -249,19 +256,38 @@ def _write_vehicle_types(f):
 
 def _write_route_definitions(f):
     """
-    Write route definitions for all four directions.
+    Write route definitions for the 3-junction corridor network.
+    
+    Corridor layout: W1  J1  J2  J3  E1
+    with cross-streets N1/S1 at J1, N2/S2 at J2, N3/S3 at J3.
     
     Routes:
-    - W_E: West to East (through intersection)
-    - E_W: East to West
-    - N_S: North to South
-    - S_N: South to North
+    Arterial:
+    - W_E: Full corridor West to East (W1  J1  J2  J3  E1)
+    - E_W: Full corridor East to West (E1  J3  J2  J1  W1)
+    Cross-streets (J1):
+    - N_S_J1: North to South at J1
+    - S_N_J1: South to North at J1
+    Cross-streets (J2):
+    - N_S_J2: North to South at J2
+    - S_N_J2: South to North at J2
+    Cross-streets (J3):
+    - N_S_J3: North to South at J3
+    - S_N_J3: South to North at J3
     """
-    f.write('\n  <!-- Route Definitions -->\n')
-    f.write('  <route id="W_E" edges="W1_to_J1 J1_to_E1"/>\n')
-    f.write('  <route id="E_W" edges="E1_to_J1 J1_to_W1"/>\n')
+    f.write('\n  <!-- Corridor Route Definitions -->\n')
+    # Full arterial through-routes
+    f.write('  <route id="W_E" edges="W1_to_J1 J1_to_J2 J2_to_J3 J3_to_E1"/>\n')
+    f.write('  <route id="E_W" edges="E1_to_J3 J3_to_J2 J2_to_J1 J1_to_W1"/>\n')
+    # Cross-street routes at J1
     f.write('  <route id="N_S" edges="N1_to_J1 J1_to_S1"/>\n')
     f.write('  <route id="S_N" edges="S1_to_J1 J1_to_N1"/>\n')
+    # Cross-street routes at J2
+    f.write('  <route id="N_S_J2" edges="N2_to_J2 J2_to_S2"/>\n')
+    f.write('  <route id="S_N_J2" edges="S2_to_J2 J2_to_N2"/>\n')
+    # Cross-street routes at J3
+    f.write('  <route id="N_S_J3" edges="N3_to_J3 J3_to_S3"/>\n')
+    f.write('  <route id="S_N_J3" edges="S3_to_J3 J3_to_N3"/>\n')
 
 
 def _write_traffic_flows(f, flows: Dict[str, int]):
@@ -274,15 +300,27 @@ def _write_traffic_flows(f, flows: Dict[str, int]):
     """
     f.write('\n  <!-- Traffic Flows -->\n')
     
-    # Use car type for regular flows (could be extended to mix vehicle types)
+    ep = simulation.EPISODE_LENGTH
+    # Arterial flows (through the full corridor)
     f.write(f'  <flow id="flow_WE" type="car" route="W_E" '
-            f'begin="0" end="{simulation.EPISODE_LENGTH}" vehsPerHour="{flows["W_E"]}"/>\n')
+            f'begin="0" end="{ep}" vehsPerHour="{flows["W_E"]}"/>\n')
     f.write(f'  <flow id="flow_EW" type="car" route="E_W" '
-            f'begin="0" end="{simulation.EPISODE_LENGTH}" vehsPerHour="{flows["E_W"]}"/>\n')
+            f'begin="0" end="{ep}" vehsPerHour="{flows["E_W"]}"/>\n')
+    # J1 cross-street flows
     f.write(f'  <flow id="flow_NS" type="car" route="N_S" '
-            f'begin="0" end="{simulation.EPISODE_LENGTH}" vehsPerHour="{flows["N_S"]}"/>\n')
+            f'begin="0" end="{ep}" vehsPerHour="{flows["N_S"]}"/>\n')
     f.write(f'  <flow id="flow_SN" type="car" route="S_N" '
-            f'begin="0" end="{simulation.EPISODE_LENGTH}" vehsPerHour="{flows["S_N"]}"/>\n')
+            f'begin="0" end="{ep}" vehsPerHour="{flows["S_N"]}"/>\n')
+    # J2 cross-street flows
+    f.write(f'  <flow id="flow_NS_J2" type="car" route="N_S_J2" '
+            f'begin="0" end="{ep}" vehsPerHour="{flows["N_S_J2"]}"/>\n')
+    f.write(f'  <flow id="flow_SN_J2" type="car" route="S_N_J2" '
+            f'begin="0" end="{ep}" vehsPerHour="{flows["S_N_J2"]}"/>\n')
+    # J3 cross-street flows
+    f.write(f'  <flow id="flow_NS_J3" type="car" route="N_S_J3" '
+            f'begin="0" end="{ep}" vehsPerHour="{flows["N_S_J3"]}"/>\n')
+    f.write(f'  <flow id="flow_SN_J3" type="car" route="S_N_J3" '
+            f'begin="0" end="{ep}" vehsPerHour="{flows["S_N_J3"]}"/>\n')
 
 
 def _write_emergency_vehicle(f) -> Optional[Dict]:
@@ -560,7 +598,7 @@ if __name__ == "__main__":
     
     # Check if file was created
     if validate_route_file(test_file):
-        print(f"\n✓ Route file created successfully")
+        print(f"\n Route file created successfully")
         
         # Show file stats
         stats = get_route_file_stats()
@@ -568,4 +606,4 @@ if __name__ == "__main__":
         print(f"  Total files: {stats['total_files']}")
         print(f"  Total size: {stats['total_size_mb']:.2f} MB")
     else:
-        print(f"\n✗ Route file creation failed")
+        print(f"\n Route file creation failed")

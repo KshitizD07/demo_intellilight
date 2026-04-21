@@ -16,8 +16,7 @@ import numpy as np
 import logging
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass, asdict
-
-from rl.traffic_env import TrafficEnv4Phase
+from rl.multi_agent_env import CorridorEnv
 from training.baseline_controllers import TrafficController
 from training.metrics_calculator import MetricsCalculator, EpisodeMetrics
 
@@ -48,7 +47,7 @@ class EvaluationEngine:
     
     def __init__(
         self,
-        env: Optional[TrafficEnv4Phase] = None,
+        env: Optional[CorridorEnv] = None,
         metrics_calculator: Optional[MetricsCalculator] = None
     ):
         """
@@ -93,7 +92,7 @@ class EvaluationEngine:
         
         # Create environment if needed
         if self.env is None:
-            self.env = TrafficEnv4Phase(
+            self.env = CorridorEnv(
                 use_gui=use_gui,
                 curriculum_stage=curriculum_stage
             )
@@ -115,7 +114,7 @@ class EvaluationEngine:
             all_metrics.append(metrics)
             
             if verbose:
-                print(f"✓ (throughput={metrics.throughput}, wait={metrics.avg_wait_time:.1f}s)")
+                print(f" (throughput={metrics.throughput}, wait={metrics.avg_wait_time:.1f}s)")
         
         # Aggregate results
         aggregated = self._aggregate_metrics(all_metrics)
@@ -163,18 +162,32 @@ class EvaluationEngine:
             
             # Step environment
             obs, reward, done, truncated, info = self.env.step(action)
-            phase = self.env.current_phase
-            phase_history.append(phase)
+            phase = getattr(self.env, "current_phases", [0,0,0])
+            if isinstance(phase, dict):
+                phase_history.append(tuple(phase.values()))
+            elif isinstance(phase, list):
+                phase_history.append(tuple(phase))
+            else:
+                phase_history.append(phase)
             
             # Record data
-            queues_history.append(info['queues'])
-            wait_times_history.append(info['wait_times'])
+            if 'intersections' in info:
+                # Aggregate across all intersections
+                all_queues = []
+                all_wait_times = []
+                for jid, j_info in info['intersections'].items():
+                    all_queues.extend(j_info.get('queues', []))
+                    all_wait_times.extend(j_info.get('wait_times', []))
+                queues_history.append(all_queues)
+                wait_times_history.append(all_wait_times)
+                final_throughput = info.get('throughput', info.get('total_arrived', 0))
+            else:
+                queues_history.append(info.get('queues', []))
+                wait_times_history.append(info.get('wait_times', []))
+                final_throughput = info.get('throughput', info.get('arrived', 0))
+
             actions_history.append(action)
             info_history.append(info)
-        
-        # Get final throughput
-        # final_throughput = info['throughput']
-        final_throughput = info.get('arrived', 0)
         
         episode_data = {
             'queues': queues_history,
@@ -333,9 +346,9 @@ class EvaluationEngine:
             }
             
             if verbose:
-                print(f"\n📊 Improvements:")
+                print(f"\n Improvements:")
                 for metric, improvement in improvements.items():
-                    symbol = "↓" if improvement > 0 else "↑"
+                    symbol = "" if improvement > 0 else ""
                     print(f"   {metric}: {improvement:+.1f}% {symbol}")
         
         return results
@@ -375,8 +388,8 @@ if __name__ == "__main__":
     )
     
     print(f"\n   Results:")
-    print(f"   Throughput: {mp_metrics.mean.throughput:.0f} ± {mp_metrics.std['throughput']:.0f}")
-    print(f"   Avg Wait: {mp_metrics.mean.avg_wait_time:.1f}s ± {mp_metrics.std['avg_wait_time']:.1f}s")
+    print(f"   Throughput: {mp_metrics.mean.throughput:.0f}  {mp_metrics.std['throughput']:.0f}")
+    print(f"   Avg Wait: {mp_metrics.mean.avg_wait_time:.1f}s  {mp_metrics.std['avg_wait_time']:.1f}s")
     print(f"   Utilization: {mp_metrics.mean.intersection_utilization:.2%}")
     
     print("\n2. Evaluating Fixed-Timer (3 episodes)...")
@@ -388,8 +401,8 @@ if __name__ == "__main__":
     )
     
     print(f"\n   Results:")
-    print(f"   Throughput: {ft_metrics.mean.throughput:.0f} ± {ft_metrics.std['throughput']:.0f}")
-    print(f"   Avg Wait: {ft_metrics.mean.avg_wait_time:.1f}s ± {ft_metrics.std['avg_wait_time']:.1f}s")
+    print(f"   Throughput: {ft_metrics.mean.throughput:.0f}  {ft_metrics.std['throughput']:.0f}")
+    print(f"   Avg Wait: {ft_metrics.mean.avg_wait_time:.1f}s  {ft_metrics.std['avg_wait_time']:.1f}s")
     print(f"   Utilization: {ft_metrics.mean.intersection_utilization:.2%}")
     
     # Compare
@@ -403,5 +416,5 @@ if __name__ == "__main__":
     engine.close()
     
     print("\n" + "=" * 60)
-    print("✓ Evaluation Engine working correctly!")
+    print(" Evaluation Engine working correctly!")
     print("=" * 60)

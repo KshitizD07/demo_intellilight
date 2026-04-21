@@ -1,0 +1,32 @@
+# ============================================================
+# Intelli-Light — Python Dependencies
+# ============================================================
+# Install with: pip install -r requirements.txt
+#
+# For Google Colab, SUMO must be installed separately via apt:
+#   !sudo add-apt-repository ppa:sumo/stable -y
+#   !sudo apt-get update -q
+#   !sudo apt-get install -y sumo sumo-tools sumo-doc
+# ============================================================
+
+# Core RL framework (includes PyTorch CPU/CUDA)
+stable-baselines3[extra]>=2.3.0
+
+# Gymnasium (the maintained Gym fork used throughout the project)
+gymnasium>=0.29.0
+
+# SUMO Python bindings (TraCI + sumolib)
+traci>=1.24.0
+sumolib>=1.24.0
+
+# Scientific computing
+numpy>=1.26.0
+
+# Process management (zombie SUMO cleanup)
+psutil>=5.9.0
+
+# Visualisation (show_results.py, main.py --plot)
+matplotlib>=3.8.0
+
+# Training progress display
+tensorboard>=2.15.0

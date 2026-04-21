@@ -235,8 +235,6 @@ class TrafficEnv4Phase(gym.Env):
             for _ in range(duration):
                 traci.simulationStep()
                 self.cumulative_arrived += traci.simulation.getArrivedNumber()
-                # arrived_ids = traci.simulation.getArrivedIDList()
-                # self.cumulative_arrived += len(arrived_ids)
                 self.simulation_step += 1
                 self.phase_timer += 1
                 
@@ -322,8 +320,6 @@ class TrafficEnv4Phase(gym.Env):
             vehicles = []
             for lane in lanes[direction]:
                 vehicles += traci.lane.getLastStepVehicleIDs(lane)
-
-            # print(direction, len(vehicles))
             
             if vehicles:
                 w = np.mean([traci.vehicle.getWaitingTime(v) for v in vehicles])
@@ -331,16 +327,6 @@ class TrafficEnv4Phase(gym.Env):
                 w = 0.0
             
             waits.append(w)
-        
-        # Cumulative throughput
-        # arrived = traci.simulation.getArrivedNumber()
-        # # self.cumulative_arrived += arrived
-        # if not hasattr(self, '_last_state_call_phase') or self._last_state_call_phase != self.current_phase:
-        #     self.cumulative_arrived += arrived
-        #     self._last_state_call_phase = self.current_phase
-        # self.cumulative_arrived += traci.simulation.getArrivedNumber()
-
-        
         
         return {
             "queues": queues,
@@ -407,7 +393,7 @@ class TrafficEnv4Phase(gym.Env):
                 if lane and lane[0] in ['N', 'S', 'E', 'W']:
                     self.emergency_direction = {'N': 0, 'S': 1, 'E': 2, 'W': 3}[lane[0]]
                 else:
-                    print(f"⚠️  Unknown emergency vehicle lane: {lane}")
+                    print(f"  Unknown emergency vehicle lane: {lane}")
                     self.emergency_direction = -1
         
         else:
@@ -420,7 +406,7 @@ class TrafficEnv4Phase(gym.Env):
         
         Prints warnings if lanes don't exist.
         """
-        print("\n🔍 Verifying SUMO lane names...")
+        print("\n Verifying SUMO lane names...")
         
         expected_lanes = [
             'N1_to_J1_0', 'N1_to_J1_1',
@@ -434,11 +420,11 @@ class TrafficEnv4Phase(gym.Env):
         missing = [l for l in expected_lanes if l not in actual_lanes]
         
         if missing:
-            print(f"⚠️  WARNING: Expected lanes not found: {missing}")
+            print(f"  WARNING: Expected lanes not found: {missing}")
             print(f"   Available lanes: {actual_lanes[:10]}...")  # Show first 10
             print(f"   You may need to update lane names in _get_traffic_state()")
         else:
-            print(f"✅ All lane names verified!")
+            print(f" All lane names verified!")
     
     def _get_info(self):
         """Get episode info dict."""
@@ -490,14 +476,14 @@ if __name__ == "__main__":
     
     obs, info = env.reset()
     
-    print(f"\n📊 Observation shape: {obs.shape}")
+    print(f"\n Observation shape: {obs.shape}")
     print(f"   Expected: (14,)")
-    print(f"   ✅ MATCH!" if obs.shape == (14,) else "   ❌ MISMATCH!")
+    print(f"    MATCH!" if obs.shape == (14,) else "    MISMATCH!")
     
-    print(f"\n🎮 Action space: {env.action_space}")
-    print(f"   4 phases × 8 duration options")
+    print(f"\n Action space: {env.action_space}")
+    print(f"   4 phases  8 duration options")
     
-    print(f"\n🚦 Testing one cycle...")
+    print(f"\n Testing one cycle...")
     
     # Random action: [duration_idx for each of 4 phases]
     action = env.action_space.sample()
@@ -507,7 +493,7 @@ if __name__ == "__main__":
     
     obs, reward, terminated, truncated, info = env.step(action)
     
-    print(f"\n📈 Results:")
+    print(f"\n Results:")
     print(f"   Reward: {reward:.2f}")
     print(f"   Queues: {info['queues']}")
     print(f"   Wait times: {[f'{w:.1f}s' for w in info['wait_times']]}")
@@ -516,5 +502,5 @@ if __name__ == "__main__":
     env.close()
     
     print("\n" + "=" * 70)
-    print("✅ TEST COMPLETE")
+    print(" TEST COMPLETE")
     print("=" * 70)

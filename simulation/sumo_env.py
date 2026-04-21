@@ -10,8 +10,6 @@ Handles SUMO simulation lifecycle management including:
 
 This module provides a clean interface to SUMO, isolating all
 simulation-specific logic from the RL environment.
-
-FIXED: Compatible with new configs/parameters.py structure
 """
 
 import os
@@ -73,7 +71,6 @@ class SUMOSimulation:
         self.cummulative_arrived = 0
         self._last_reported_arrivals = 0
 
-        # FIXED: Use new config structure
         self.sumo_cfg = sumo_cfg or simulation.SUMO_CONFIG_FILE
         self.use_gui = use_gui
         self.step_length = step_length or simulation.STEP_LENGTH
@@ -217,8 +214,7 @@ class SUMOSimulation:
             cmd.extend([
                 "--no-step-log",
                 "--no-warnings",
-                "--duration-log.disable",
-                "true"
+                "--duration-log.disable", "true"
             ])
         
         return cmd
@@ -530,11 +526,7 @@ class SUMOSimulation:
         Close SUMO simulation and cleanup resources.
         """
         try:
-            # Only close if TraCI connection exists
             if traci.isLoaded():
-                logger.debug(
-                    f"Closing SUMO - cumulative_arrived was: {self.cummulative_arrived}"
-                )
                 traci.close()
 
         except Exception as e:
@@ -601,7 +593,7 @@ if __name__ == "__main__":
         # Test 1: Check SUMO availability
         print("\n1. Checking SUMO availability...")
         sim = SUMOSimulation(use_gui=False)
-        print("   ✅ SUMO manager created")
+        print("    SUMO manager created")
         
         # Test 2: Try to generate a route file and start
         print("\n2. Testing SUMO start...")
@@ -620,7 +612,7 @@ if __name__ == "__main__":
             print(f"   Route file: {route_file}")
             
             sim.start(route_file)
-            print("   ✅ SUMO started successfully")
+            print("    SUMO started successfully")
             
             # Test 3: Run a few steps
             print("\n3. Running simulation steps...")
@@ -632,23 +624,23 @@ if __name__ == "__main__":
                     time = sim.get_current_time()
                     print(f"   Step {i}: time={time}s, vehicles={veh_count}, arrived={arrived}")
             
-            print("   ✅ Simulation steps successful")
+            print("    Simulation steps successful")
             
             # Test 4: Close
             print("\n4. Closing SUMO...")
             sim.close()
-            print("   ✅ SUMO closed successfully")
+            print("    SUMO closed successfully")
             
         except ImportError:
-            print("   ⚠️  RouteGenerator not available, skipping start test")
+            print("     RouteGenerator not available, skipping start test")
         except Exception as e:
-            print(f"   ⚠️  Start test failed: {e}")
+            print(f"     Start test failed: {e}")
         
         print("\n" + "=" * 70)
-        print("✅ SUMO MODULE TEST COMPLETE")
+        print(" SUMO MODULE TEST COMPLETE")
         print("=" * 70)
         
     except Exception as e:
-        print(f"\n❌ Test failed: {e}")
+        print(f"\n Test failed: {e}")
         import traceback
         traceback.print_exc()

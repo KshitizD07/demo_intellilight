@@ -1,0 +1,21 @@
+<nodes>
+    <node id="J1" x="-500" y="0" type="traffic_light"/>
+    <node id="J2" x="0" y="0" type="traffic_light"/>
+    <node id="J3" x="500" y="0" type="traffic_light"/>
+    
+    <!-- West and East arterial ends -->
+    <node id="W1" x="-1000" y="0" type="priority"/>
+    <node id="E1" x="1000" y="0" type="priority"/>
+    
+    <!-- Cross streets for J1 -->
+    <node id="N1" x="-500" y="250" type="priority"/>
+    <node id="S1" x="-500" y="-250" type="priority"/>
+    
+    <!-- Cross streets for J2 -->
+    <node id="N2" x="0" y="250" type="priority"/>
+    <node id="S2" x="0" y="-250" type="priority"/>
+    
+    <!-- Cross streets for J3 -->
+    <node id="N3" x="500" y="250" type="priority"/>
+    <node id="S3" x="500" y="-250" type="priority"/>
+</nodes>

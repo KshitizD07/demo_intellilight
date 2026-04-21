@@ -124,28 +124,36 @@ class MetricsCalculator:
         # ===== WAIT TIME METRICS =====
         
         all_wait_times = np.array(wait_times)  # Shape: (steps, 4)
+        all_queues = np.array(queues)  # Shape: (steps, 4)
         
         # Total and average
-        metrics.total_wait_time = float(np.sum(all_wait_times))
-        metrics.avg_wait_time = float(np.mean(all_wait_times))
-        metrics.max_wait_time = float(np.max(all_wait_times))
+        metrics.total_wait_time = float(np.sum(all_wait_times)) if all_wait_times.size > 0 else 0.0
+        if all_wait_times.size > 0:
+            metrics.avg_wait_time = float(np.mean(all_wait_times))
+            metrics.max_wait_time = float(np.max(all_wait_times))
+        
+        if all_queues.size > 0:
+            # Note: assuming shape is (steps, 3 intersections * 4 phases, etc.) depending on env
+            # Safest is just summing across axis=1 if it's multidimensional
+            metrics.avg_queue_length = float(np.mean(np.sum(all_queues, axis=1))) if all_queues.ndim > 1 else float(np.mean(all_queues))
+            metrics.max_queue_length = float(np.max(np.sum(all_queues, axis=1)))  if all_queues.ndim > 1 else float(np.max(all_queues))
         
         # Per-direction wait times
         direction_names = ['W', 'E', 'N', 'S']
         for i, direction in enumerate(direction_names):
-            metrics.wait_time_per_direction[direction] = float(np.mean(all_wait_times[:, i]))
-            metrics.max_wait_per_direction[direction] = float(np.max(all_wait_times[:, i]))
-        
-        # ===== QUEUE METRICS =====
-        
-        all_queues = np.array(queues)  # Shape: (steps, 4)
-        
-        metrics.avg_queue_length = float(np.mean(np.sum(all_queues, axis=1)))
-        metrics.max_queue_length = float(np.max(np.sum(all_queues, axis=1)))
-        
+            if all_wait_times.size > 0 and all_wait_times.ndim > 1 and all_wait_times.shape[1] > i:
+                metrics.wait_time_per_direction[direction] = float(np.mean(all_wait_times[:, i]))
+                metrics.max_wait_per_direction[direction] = float(np.max(all_wait_times[:, i]))
+            else:
+                metrics.wait_time_per_direction[direction] = 0.0
+                metrics.max_wait_per_direction[direction] = 0.0
+                
         # Per-direction queues
         for i, direction in enumerate(direction_names):
-            metrics.queue_per_direction[direction] = float(np.mean(all_queues[:, i]))
+            if all_queues.size > 0 and all_queues.ndim > 1 and all_queues.shape[1] > i:
+                metrics.queue_per_direction[direction] = float(np.mean(all_queues[:, i]))
+            else:
+                metrics.queue_per_direction[direction] = 0.0
         
         # ===== SAFETY METRICS =====
         
@@ -218,7 +226,7 @@ class MetricsCalculator:
         """
         Count phase switches during episode.
         
-        For cyclic: Each action = 2 switches (EW→NS→EW)
+        For cyclic: Each action = 2 switches (EWNSEW)
         For acyclic: Count direction changes
         
         Args:
@@ -303,7 +311,7 @@ class MetricsCalculator:
             
             # Red time estimation (all-red periods)
             if 'cycle_time' in info:
-                # Cycle = EW_green + NS_green + 2×all_red
+                # Cycle = EW_green + NS_green + 2all_red
                 green_in_cycle = info.get('ew_duration', 0) + info.get('ns_duration', 0)
                 total_red += (info['cycle_time'] - green_in_cycle)
         
@@ -405,7 +413,7 @@ if __name__ == "__main__":
                 'mode': 'CYCLIC',
                 'ew_duration': 30,
                 'ns_duration': 25,
-                'cycle_time': 63,  # 30 + 25 + 2×4
+                'cycle_time': 63,  # 30 + 25 + 24
                 'simulation_step': i * 63,
                 'emergency': False
             }
@@ -417,28 +425,28 @@ if __name__ == "__main__":
     calc = MetricsCalculator(starvation_threshold=90)
     metrics = calc.calculate_metrics(episode_data)
     
-    print("\n📊 Calculated Metrics:")
+    print("\n Calculated Metrics:")
     print(f"   Throughput: {metrics.throughput} vehicles")
     print(f"   Avg Wait Time: {metrics.avg_wait_time:.2f}s")
     print(f"   Max Wait Time: {metrics.max_wait_time:.2f}s")
     print(f"   Avg Queue Length: {metrics.avg_queue_length:.2f} vehicles")
     print(f"   Max Queue Length: {metrics.max_queue_length:.2f} vehicles")
     
-    print("\n🚨 Safety Metrics:")
+    print("\n Safety Metrics:")
     print(f"   Phase Switches: {metrics.phase_switches}")
     print(f"   Switch Frequency: {metrics.phase_switch_frequency:.2f} /min")
     print(f"   Starvation Events: {metrics.starvation_events}")
     
-    print("\n⚙️  Operational Metrics:")
+    print("\n  Operational Metrics:")
     print(f"   Intersection Utilization: {metrics.intersection_utilization:.2%}")
     print(f"   Fairness Score: {metrics.fairness_score:.3f}")
     print(f"   Avg Cycle Time: {metrics.avg_cycle_time:.1f}s")
     
-    print("\n📍 Per-Direction Wait Times:")
+    print("\n Per-Direction Wait Times:")
     for direction, wait in metrics.wait_time_per_direction.items():
         max_wait = metrics.max_wait_per_direction[direction]
         print(f"   {direction}: avg={wait:.1f}s, max={max_wait:.1f}s")
     
     print("\n" + "=" * 60)
-    print("✓ MetricsCalculator working correctly!")
+    print(" MetricsCalculator working correctly!")
     print("=" * 60)

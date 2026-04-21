@@ -111,7 +111,7 @@ class EvaluationCallback(BaseCallback):
         
         if self.verbose >= 1:
             print(f"\n{'='*70}")
-            print(f"📊 EVALUATION at {self.num_timesteps} timesteps")
+            print(f" EVALUATION at {self.num_timesteps} timesteps")
             print(f"{'='*70}")
         
         # Run evaluation
@@ -137,7 +137,7 @@ class EvaluationCallback(BaseCallback):
         # Evaluate across all scenarios
         for scenario in self.scenarios:
             if self.verbose >= 1:
-                print(f"\n📍 Scenario: {scenario}")
+                print(f"\n Scenario: {scenario}")
             
             # Evaluate baseline
             if self.verbose >= 2:
@@ -318,7 +318,7 @@ if __name__ == "__main__":
     print("Testing EvaluationCallback")
     print("=" * 60)
     
-    print("\n✓ EvaluationCallback module loaded successfully")
+    print("\n EvaluationCallback module loaded successfully")
     print("\nTo use in training:")
     print("  from training.evaluation_callback import EvaluationCallback")
     print("  callback = EvaluationCallback(eval_freq=10000, n_eval_episodes=3)")

@@ -6,7 +6,7 @@ Generates traffic patterns that match real-world behavior:
 - Time-of-day demand curves
 - Random events (accidents, weather, special events)
 - Directional imbalances
-- High volatility (±30% variance)
+- High volatility (30% variance)
 
 This replaces the simple uniform traffic generation.
 """
@@ -55,7 +55,7 @@ class RealisticTrafficGenerator:
     Features:
     - Time-of-day curves (morning rush, evening rush, weekend)
     - Random events that create spikes
-    - Directional imbalances (e.g., morning: suburbs→city)
+    - Directional imbalances (e.g., morning: suburbscity)
     - High variance (realistic uncertainty)
     """
     
@@ -72,7 +72,7 @@ class RealisticTrafficGenerator:
         
         Args:
             base_demand: Base vehicles per hour
-            volatility: Random variance (0.3 = ±30%)
+            volatility: Random variance (0.3 = 30%)
             event_probability: Chance of random event per episode
             enable_time_curves: Use time-of-day patterns
             seed: Random seed for reproducibility
@@ -230,8 +230,8 @@ class RealisticTrafficGenerator:
         """
         Split total demand across directions based on time.
         
-        Morning (7-9 AM): Heavy inbound (N, W → city center)
-        Evening (5-7 PM): Heavy outbound (city → S, E)
+        Morning (7-9 AM): Heavy inbound (N, W  city center)
+        Evening (5-7 PM): Heavy outbound (city  S, E)
         Midday/Night: Balanced
         """
         hour = time % 24
@@ -273,7 +273,7 @@ class RealisticTrafficGenerator:
         - Driver behavior varies
         - Route choices change
         
-        We add ±30% noise to each direction independently.
+        We add 30% noise to each direction independently.
         """
         noisy_demands = {}
         for direction, demand in demands.items():
@@ -381,7 +381,7 @@ def test_traffic_generator():
     )
     
     # Test time-of-day curves
-    print("\n📊 TIME-OF-DAY DEMAND CURVES:")
+    print("\n TIME-OF-DAY DEMAND CURVES:")
     print(f"\n{'Time':<12} {'Total Demand':<15} {'N':<8} {'S':<8} {'E':<8} {'W':<8}")
     print("-" * 70)
     
@@ -393,7 +393,7 @@ def test_traffic_generator():
         print(f"{time_str:<12} {demand.total:<15} {demand.north:<8} {demand.south:<8} {demand.east:<8} {demand.west:<8}")
     
     # Test events
-    print("\n\n🚨 EVENT EFFECTS:")
+    print("\n\n EVENT EFFECTS:")
     print(f"\n{'Event':<20} {'Total Demand':<15} {'N':<8} {'S':<8} {'E':<8} {'W':<8}")
     print("-" * 70)
     
@@ -410,7 +410,7 @@ def test_traffic_generator():
         print(f"{event.value:<20} {demand.total:<15} {demand.north:<8} {demand.south:<8} {demand.east:<8} {demand.west:<8}")
     
     # Test volatility
-    print("\n\n📈 VOLATILITY TEST (10 samples at 8 AM):")
+    print("\n\n VOLATILITY TEST (10 samples at 8 AM):")
     print(f"\n{'Sample':<10} {'Total Demand':<15} {'N':<8} {'S':<8} {'E':<8} {'W':<8}")
     print("-" * 70)
     
@@ -420,7 +420,7 @@ def test_traffic_generator():
         print(f"{i+1:<10} {demand.total:<15} {demand.north:<8} {demand.south:<8} {demand.east:<8} {demand.west:<8}")
     
     # Test predefined scenarios
-    print("\n\n🎯 PREDEFINED SCENARIOS:")
+    print("\n\n PREDEFINED SCENARIOS:")
     print(f"\n{'Scenario':<20} {'Total Demand':<15} {'N':<8} {'S':<8} {'E':<8} {'W':<8}")
     print("-" * 70)
     
@@ -432,7 +432,7 @@ def test_traffic_generator():
         print(f"{scenario:<20} {demand.total:<15} {demand.north:<8} {demand.south:<8} {demand.east:<8} {demand.west:<8}")
     
     print("\n" + "=" * 70)
-    print("✅ TEST COMPLETE")
+    print(" TEST COMPLETE")
     print("=" * 70 + "\n")
 
 

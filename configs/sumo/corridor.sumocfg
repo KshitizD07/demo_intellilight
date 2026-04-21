@@ -1,0 +1,12 @@
+<configuration>
+    <input>
+        <net-file value="corridor.net.xml"/>
+        <!-- Route file will be specified via command line -->
+    </input>
+    <time>
+        <begin value="0"/>
+    </time>
+    <report>
+        <no-step-log value="true"/>
+    </report>
+</configuration>
