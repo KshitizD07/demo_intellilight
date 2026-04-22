@@ -357,11 +357,21 @@ class PerPhaseCorridorEnv(gym.Env):
             self.simulation_step += 1
             self.cumulative_arrived += traci.simulation.getArrivedNumber()
 
-        # Compute per-junction rewards
+        # Compute per-junction rewards (with green-wave context)
         states = self._get_all_traffic_states()
         rewards: List[float] = []
 
         for i, jid in enumerate(self.junction_ids):
+            # Build neighbor context for green-wave bonus
+            neighbor_ctx = {
+                "has_upstream": i > 0,
+                "has_downstream": i < self.n_junctions - 1,
+                "upstream_phase": self.current_phases.get(
+                    self.junction_ids[i - 1]) if i > 0 else None,
+                "downstream_phase": self.current_phases.get(
+                    self.junction_ids[i + 1]) if i < self.n_junctions - 1 else None,
+            }
+
             r = self.reward_calcs[i].calculate_reward(
                 queues=states[jid]["queues"],
                 wait_times=states[jid]["wait_times"],
@@ -369,6 +379,7 @@ class PerPhaseCorridorEnv(gym.Env):
                 emergency_active=False,
                 emergency_direction=None,
                 current_phase=self.current_phase_idx,
+                neighbor_context=neighbor_ctx,
             )
             rewards.append(r)
 

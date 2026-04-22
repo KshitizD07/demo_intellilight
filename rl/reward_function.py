@@ -9,11 +9,13 @@ Improved production reward function with:
 - Fairness and efficiency balancing
 - Stable reward scaling for PPO
 - Pressure-based reward component (stabilizes RL)
+- Green-wave coordination bonus (ILPS per-phase)
 
 FIXES APPLIED:
 - Corrected starvation penalty logic (removed double-negative)
-- Reduced throughput multiplier (5.0  2.0)
+- Reduced throughput multiplier (5.0 → 1.2 for per-phase)
 - Simplified efficiency reward
+- Added green-wave bonus for ILPS neighbour coordination
 """
 
 import numpy as np
@@ -32,6 +34,7 @@ class RewardWeights:
     emergency: float = 100.0
     efficiency: float = 0.4
     pressure: float = 0.6
+    green_wave: float = 3.0   # Bonus for progressive signal coordination
 
 
 class EnhancedRewardCalculator:
@@ -81,7 +84,8 @@ class EnhancedRewardCalculator:
         arrived_count: int,
         emergency_active: bool = False,
         emergency_direction: int = None,
-        current_phase: int = 0
+        current_phase: int = 0,
+        neighbor_context: dict = None
     ) -> float:
         """
         Calculate total reward for current state-action.
@@ -92,7 +96,14 @@ class EnhancedRewardCalculator:
             arrived_count: Cumulative vehicles that completed trip
             emergency_active: Is emergency vehicle present?
             emergency_direction: Which direction (0=N, 1=S, 2=E, 3=W)
-            current_phase: Current phase (0=EW, 1=NS for 2-phase)
+            current_phase: Current phase index (0-3 for 4-phase)
+            neighbor_context: Optional dict for ILPS green-wave bonus:
+                {
+                    "upstream_phase": int or None,
+                    "downstream_phase": int or None,
+                    "has_upstream": bool,
+                    "has_downstream": bool,
+                }
         
         Returns:
             Total reward (clipped to [-300, 120])
@@ -114,6 +125,7 @@ class EnhancedRewardCalculator:
         )
         efficiency_reward = self._efficiency_reward(throughput, queues)
         pressure_reward = self._pressure_reward(queues)
+        green_wave_reward = self._green_wave_bonus(current_phase, neighbor_context)
         
         # Total reward
         total_reward = (
@@ -124,7 +136,8 @@ class EnhancedRewardCalculator:
             starvation_penalty +
             emergency_reward +
             efficiency_reward +
-            pressure_reward
+            pressure_reward +
+            green_wave_reward
         )
         
         # Apply curriculum multiplier
@@ -148,8 +161,9 @@ class EnhancedRewardCalculator:
     
     def _throughput_reward(self, throughput: int) -> float:
         """Reward for vehicles served."""
-        # FIXED: Reduced multiplier from 5.0 to 2.0
-        return throughput * self.weights.throughput * 2.0
+        # Per-phase throughput is lower than per-cycle, so use 1.2x multiplier
+        # (reduced from 2.0 to avoid reward scale explosion with more steps)
+        return throughput * self.weights.throughput * 1.2
     
     def _wait_time_penalty(self, wait_times: List[float]) -> float:
         """Penalty for long wait times."""
@@ -289,6 +303,56 @@ class EnhancedRewardCalculator:
     def _get_curriculum_multiplier(self):
         """Curriculum learning multiplier."""
         return 1.0 + (self.curriculum_stage * 0.2)
+    
+    def _green_wave_bonus(
+        self,
+        current_phase: int,
+        neighbor_context: dict = None
+    ) -> float:
+        """
+        Bonus for green-wave coordination (ILPS only).
+        
+        Rewards the agent when its current phase matches the upstream
+        neighbour's phase — this encourages progressive signal timing
+        where vehicles encounter green lights as they travel along
+        the corridor.
+        
+        The bonus is active only for EW phases (0, 1) since the
+        corridor runs East-West. NS phases don't benefit from
+        progression.
+        
+        Args:
+            current_phase: This junction's current phase (0-3)
+            neighbor_context: Dict with upstream/downstream phase info
+                              (None for centralized mode → returns 0)
+        
+        Returns:
+            Green-wave bonus (0 if not applicable)
+        """
+        if neighbor_context is None:
+            return 0.0
+        
+        bonus = 0.0
+        
+        # Only reward EW phase coordination (arterial direction)
+        ew_phases = {0, 1}  # EW-Through and EW-Left
+        
+        if current_phase in ew_phases:
+            # Upstream coordination: if upstream is also in an EW phase,
+            # this junction is extending the green wave.
+            if neighbor_context.get("has_upstream", False):
+                up_phase = neighbor_context.get("upstream_phase")
+                if up_phase is not None and up_phase in ew_phases:
+                    bonus += self.weights.green_wave
+            
+            # Downstream coordination: if downstream is also in EW phase,
+            # the wave is propagating forward.
+            if neighbor_context.get("has_downstream", False):
+                dn_phase = neighbor_context.get("downstream_phase")
+                if dn_phase is not None and dn_phase in ew_phases:
+                    bonus += self.weights.green_wave * 0.5  # Weaker signal
+        
+        return bonus
     
     def set_curriculum_stage(self, stage: int):
         """Set curriculum stage (0, 1, or 2)."""
