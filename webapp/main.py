@@ -71,7 +71,7 @@ async def startup_event():
 
 # ── API Endpoints ──
 
-@app.websocket("/ws")
+@app.websocket("/ws/telemetry")
 async def websocket_endpoint(websocket: WebSocket):
     """Clients connect here to receive the telemetry stream."""
     await manager.connect(websocket)
@@ -105,7 +105,7 @@ async def list_models():
     basenames = [os.path.basename(f) for f in files]
     return {"models": basenames}
 
-@app.get("/api/historical")
+@app.get("/api/results")
 async def get_historical():
     """Read the final_results.json and format it for the frontend."""
     results_path = os.path.join(ROOT_DIR, "final_results.json")

@@ -54,7 +54,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }).catch(err => addTerminalLog("API_ERR: Models fetch failed"));
 
     // Fetch Historical Data and Render Charts
-    fetch(`${API_BASE}/api/historical`)
+    fetch(`${API_BASE}/api/results`)
         .then(res => res.json())
         .then(data => {
             if (data.error) {
@@ -109,7 +109,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let socket;
     function connectWS() {
         addTerminalLog("INIT_CONNECT_SEQ: PENDING");
-        socket = new WebSocket(`${wsProtocol}//${wsHost}/ws`);
+        socket = new WebSocket(`${wsProtocol}//${wsHost}/ws/telemetry`);
         
         socket.onopen = () => {
             elWsDot.classList.replace("bg-zinc-500", "bg-primary");

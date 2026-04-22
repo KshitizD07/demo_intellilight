@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Intelli-Light - The Lab</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&amp;family=Space+Grotesk:wght@500;600;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+                  "outline-variant": "#3d4a3c",
+                  "secondary-container": "#fecb00",
+                  "primary-container": "#34c759",
+                  "inverse-surface": "#e5e2e1",
+                  "secondary": "#ffecc0",
+                  "on-background": "#e5e2e1",
+                  "surface-container": "#201f1f",
+                  "on-secondary-fixed": "#241a00",
+                  "outline": "#869584",
+                  "primary": "#56e472",
+                  "error-container": "#93000a",
+                  "primary-fixed": "#72fe88",
+                  "surface-container-high": "#2a2a2a",
+                  "on-secondary-fixed-variant": "#584400",
+                  "error": "#ffb4ab",
+                  "tertiary-container": "#ff8e80",
+                  "on-tertiary": "#690003",
+                  "tertiary-fixed": "#ffdad5",
+                  "on-error": "#690005",
+                  "surface-bright": "#3a3939",
+                  "on-secondary-container": "#6e5700",
+                  "on-primary-fixed": "#002107",
+                  "surface-tint": "#53e16f",
+                  "primary-fixed-dim": "#53e16f",
+                  "inverse-on-surface": "#313030",
+                  "on-tertiary-fixed-variant": "#930005",
+                  "background": "#131313",
+                  "on-primary-container": "#004d1a",
+                  "surface-dim": "#131313",
+                  "tertiary": "#ffb8ae",
+                  "on-surface": "#e5e2e1",
+                  "on-tertiary-fixed": "#410001",
+                  "inverse-primary": "#006e28",
+                  "on-error-container": "#ffdad6",
+                  "surface-container-lowest": "#0e0e0e",
+                  "surface-container-low": "#1c1b1b",
+                  "on-surface-variant": "#bccbb8",
+                  "secondary-fixed": "#ffe08b",
+                  "on-tertiary-container": "#890005",
+                  "secondary-fixed-dim": "#f1c100",
+                  "on-secondary": "#3d2f00",
+                  "surface": "#131313",
+                  "surface-container-highest": "#353534",
+                  "on-primary": "#003911",
+                  "surface-variant": "#353534",
+                  "on-primary-fixed-variant": "#00531c",
+                  "tertiary-fixed-dim": "#ffb4aa"
+          },
+          "borderRadius": {
+                  "DEFAULT": "0.125rem",
+                  "lg": "0.25rem",
+                  "xl": "0.5rem",
+                  "full": "0.75rem"
+          },
+          "spacing": {
+                  "xl": "48px",
+                  "sm": "8px",
+                  "md": "16px",
+                  "unit": "4px",
+                  "xs": "4px",
+                  "lg": "24px",
+                  "margin": "32px",
+                  "gutter": "24px"
+          },
+          "fontFamily": {
+                  "body-lg": ["Inter"],
+                  "body-md": ["Inter"],
+                  "headline-md": ["Space Grotesk"],
+                  "mono-data": ["Inter"],
+                  "display-xl": ["Space Grotesk"],
+                  "headline-lg": ["Space Grotesk"],
+                  "label-caps": ["Space Grotesk"]
+          },
+          "fontSize": {
+                  "body-lg": ["18px", {"lineHeight": "1.5","fontWeight": "400"}],
+                  "body-md": ["16px", {"lineHeight": "1.5","fontWeight": "400"}],
+                  "headline-md": ["24px", {"lineHeight": "1.3","fontWeight": "500"}],
+                  "mono-data": ["14px", {"lineHeight": "1.0","letterSpacing": "-0.01em","fontWeight": "500"}],
+                  "display-xl": ["48px", {"lineHeight": "1.1","letterSpacing": "-0.02em","fontWeight": "700"}],
+                  "headline-lg": ["32px", {"lineHeight": "1.2","fontWeight": "600"}],
+                  "label-caps": ["12px", {"lineHeight": "1.0","letterSpacing": "0.1em","fontWeight": "700"}]
+          }
+  },
+      },
+    }
+</script>
+<style>
+    body {
+        background-color: #050505;
+    }
+    .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+</style>
+</head>
+<body class="bg-[#050505] text-on-background min-h-screen flex overflow-hidden">
+<aside class="bg-[#050505]/90 backdrop-blur-[20px] h-screen w-72 fixed left-0 top-0 border-r border-white/10 shadow-[4px_0_24px_rgba(0,0,0,0.5)] z-50">
+<div class="flex flex-col justify-between py-8 h-full">
+<div>
+<div class="px-6 mb-8 border-b border-white/5 pb-6">
+<div class="flex items-center gap-4 mb-6">
+<img alt="AI Supervisor Avatar" class="w-12 h-12 rounded-full ring-2 ring-[#34C759]/30" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAe75UYsMBNX7moJOfXcvUCXHLrBopLzbcJzrTFzK9WVLkYRC1OI9_jtoePhqW8ppg-vvfmEWoNF4Pwk46ea-G1SH_O4wX3kX00kXsWB0pxkYF9nxgNDqUe_mdK7U0WjlIou8Yg1l9K_-XGCu5bz-yZS0Sn1jB842jxeQw-nOGvv1hBcJ5m0-nT9Kn7Q3sU3knZ0mx4Y3mu3X9qh3JF0mCKSv4eLnS0IJ4H49PKiOceVyEslO1L62-NGBtlDWPtj15R6A2XNWm_e-k"/>
+<div>
+<h1 class="text-[#34C759] font-black tracking-tighter text-2xl drop-shadow-[0_0_10px_rgba(52,199,89,0.4)]">INTELLI-LIGHT</h1>
+<p class="text-[#34C759] font-['Space_Grotesk'] tracking-wider text-xs uppercase opacity-70">AI CONTROL CENTER</p>
+</div>
+</div>
+<button class="w-full bg-error/10 text-error border border-error/30 py-3 rounded hover:bg-error/20 transition-all font-label-caps flex items-center justify-center gap-2 shadow-[0_0_15px_-5px_rgba(255,180,171,0.5)]">
+<span class="material-symbols-outlined text-[18px]">warning</span>
+                        LIVE OVERRIDE
+                    </button>
+</div>
+<nav class="flex flex-col gap-2">
+<a class="text-white/40 px-6 py-4 flex items-center gap-4 hover:text-white/80 transition-all hover:bg-white/5 duration-200" href="/static/index.html">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-['Space_Grotesk'] tracking-wider text-xs uppercase">Dashboard</span>
+</a>
+<a class="text-white/40 px-6 py-4 flex items-center gap-4 hover:text-white/80 transition-all hover:bg-white/5 duration-200" href="#">
+<span class="material-symbols-outlined">settings_input_component</span>
+<span class="font-['Space_Grotesk'] tracking-wider text-xs uppercase">Admin Panel</span>
+</a>
+<a class="bg-[#34C759]/10 text-[#34C759] border-r-2 border-[#34C759] px-6 py-4 flex items-center gap-4 transition-all hover:bg-white/5 duration-200 ring-1 ring-[#34C759]/50 scale-[0.99]" href="/static/about.html">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">info</span>
+<span class="font-['Space_Grotesk'] tracking-wider text-xs uppercase">About</span>
+</a>
+</nav>
+</div>
+<div class="border-t border-white/5 pt-4">
+<a class="text-white/40 px-6 py-4 flex items-center gap-4 hover:text-white/80 transition-all hover:bg-white/5 duration-200" href="#">
+<span class="material-symbols-outlined">monitor_heart</span>
+<span class="font-['Space_Grotesk'] tracking-wider text-xs uppercase">System Health</span>
+</a>
+<a class="text-white/40 px-6 py-4 flex items-center gap-4 hover:text-white/80 transition-all hover:bg-white/5 duration-200" href="#">
+<span class="material-symbols-outlined">logout</span>
+<span class="font-['Space_Grotesk'] tracking-wider text-xs uppercase">Logout</span>
+</a>
+</div>
+</div>
+</aside>
+<main class="ml-72 flex-1 flex flex-col min-h-screen h-screen">
+<header class="bg-[#050505]/40 backdrop-blur-[10px] docked full-width top-0 h-16 border-b border-white/10 flex items-center justify-between px-8 w-full z-40">
+<div class="flex items-center gap-8 divide-x divide-white/10">
+<span class="text-[#34C759] font-bold text-lg pr-8">INTELLI-LIGHT SYSTEM</span>
+<nav class="flex items-center gap-6 pl-8">
+<a class="text-white/60 hover:text-white font-['Space_Grotesk'] font-medium antialiased hover:bg-[#34C759]/5 px-3 py-1 rounded transition-colors duration-300" href="#">Network Status</a>
+<a class="text-white/60 hover:text-white font-['Space_Grotesk'] font-medium antialiased hover:bg-[#34C759]/5 px-3 py-1 rounded transition-colors duration-300" href="#">Node Overview</a>
+</nav>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-4 divide-x divide-white/10">
+<div class="flex items-center gap-3 pr-4">
+<button class="text-white/60 hover:text-primary transition-colors"><span class="material-symbols-outlined">memory</span></button>
+<button class="text-white/60 hover:text-primary transition-colors"><span class="material-symbols-outlined">thermostat</span></button>
+<button class="text-white/60 hover:text-primary transition-colors"><span class="material-symbols-outlined">router</span></button>
+</div>
+<button class="pl-4 text-error font-label-caps hover:text-error-container transition-colors tracking-wider">
+                        EMERGENCY STOP
+                    </button>
+</div>
+</div>
+</header>
+<div class="flex-1 overflow-y-auto p-margin pb-24">
+<div class="max-w-7xl mx-auto space-y-8">
+<section class="space-y-4 relative">
+<div class="absolute -top-10 -left-10 w-64 h-64 bg-primary/5 rounded-full blur-[100px] pointer-events-none"></div>
+<h2 class="font-display-xl text-on-surface tracking-tighter">System Architecture: <span class="text-primary opacity-90 drop-shadow-[0_0_15px_rgba(86,228,114,0.3)]">The Lab</span></h2>
+<p class="font-body-lg text-on-surface-variant max-w-4xl text-lg leading-relaxed">
+                        Deep dive into the neural pathways and hardware constraints of the Intelli-Light platform. Intelli-Light is an advanced reinforcement learning system using PPO agents tightly coupled with the SUMO (Simulation of Urban MObility) environment to dynamically optimize urban traffic grids. The architecture relies on an aggressive decoupled strategy using Python, FastAPI, and Redis to ensure the machine learning loop never blocks real-time visualization rendering.
+                    </p>
+</section>
+
+<!-- Scale Plans & System Knowledge -->
+<section class="bg-surface-container-low/40 backdrop-blur-[20px] border border-outline-variant/30 rounded-xl p-lg relative overflow-hidden group">
+    <div class="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent pointer-events-none"></div>
+    <h3 class="font-headline-md text-on-surface mb-6 flex items-center gap-3">
+        <span class="material-symbols-outlined text-primary">psychology</span>
+        Cognitive Architecture Insights
+    </h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 text-on-surface-variant font-body-md">
+        <div class="space-y-4">
+            <h4 class="font-label-caps text-primary tracking-widest uppercase">Decoupled Processing</h4>
+            <p class="leading-relaxed text-[15px]">
+                The greatest engineering hurdle overcome in Intelli-Light was synchronous blocking. By implementing a high-throughput <strong>Redis Pub/Sub</strong> and State Cache layer, the intensely heavy SUMO simulation and PyTorch inference loops are entirely decoupled from the presentation layer. 
+            </p>
+            <p class="leading-relaxed text-[15px]">
+                The FastAPI service simply streams the latest telemetry from Redis at 60Hz to the frontend, eliminating UI freezes and allowing the model to train unimpeded in the background.
+            </p>
+        </div>
+        <div class="space-y-4">
+            <h4 class="font-label-caps text-secondary tracking-widest uppercase">Agent Intelligence</h4>
+            <ul class="list-none space-y-3 pt-2">
+                <li class="flex gap-4 items-start">
+                    <span class="material-symbols-outlined text-secondary text-lg">batch_prediction</span>
+                    <div class="text-[14px]">
+                        <strong class="text-secondary/90">Observation Clipping</strong><br>
+                        Current states are heavily normalized and clipped to maintain stable gradient updates across high-variance traffic patterns.
+                    </div>
+                </li>
+                <li class="flex gap-4 items-start">
+                    <span class="material-symbols-outlined text-secondary text-lg">alt_route</span>
+                    <div class="text-[14px]">
+                        <strong class="text-secondary/90">Reward Synthesis</strong><br>
+                        Agents optimize for global throughput by computing negative reward signals based on aggregated queuing delays and cumulative vehicle wait times across connecting arterial lanes.
+                    </div>
+                </li>
+            </ul>
+        </div>
+    </div>
+</section>
+
+<section class="grid grid-cols-12 gap-gutter">
+<div class="col-span-12 lg:col-span-8 bg-surface-container-low/40 backdrop-blur-[20px] border border-outline-variant/30 rounded-xl p-lg relative overflow-hidden group">
+<div class="absolute inset-0 bg-gradient-to-b from-white/[0.02] to-transparent pointer-events-none"></div>
+<h3 class="font-headline-md text-on-surface mb-8 flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">hub</span>
+                            Neural Tech Stack
+                        </h3>
+<div class="relative h-[400px] w-full flex items-center justify-center">
+<div class="absolute inset-0 opacity-20 pointer-events-none" style="background-image: radial-gradient(circle at 50% 50%, rgba(86,228,114,0.15) 0%, transparent 70%);"></div>
+<div class="absolute w-px h-full bg-outline-variant/50 left-1/2 -translate-x-1/2 hidden md:block"></div>
+<div class="absolute h-px w-full bg-outline-variant/50 top-1/2 -translate-y-1/2 hidden md:block"></div>
+<div class="z-10 bg-surface-container-high/80 backdrop-blur-xl border border-primary/50 rounded-lg p-4 w-48 text-center shadow-[0_0_30px_-5px_rgba(86,228,114,0.3)] absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+<span class="material-symbols-outlined text-primary text-3xl mb-2">schema</span>
+<h4 class="font-label-caps text-primary uppercase">Core Engine</h4>
+<p class="font-mono-data text-[10px] text-on-surface-variant mt-1">PyTorch / SUMO</p>
+</div>
+<div class="z-10 bg-surface-container/60 backdrop-blur-md border border-outline-variant/50 rounded-lg p-4 w-40 text-center absolute top-[10%] left-1/2 -translate-x-1/2 hover:border-secondary transition-colors">
+<span class="material-symbols-outlined text-secondary text-2xl mb-1">sensors</span>
+<h4 class="font-label-caps text-on-surface uppercase">Model Server</h4>
+<p class="font-mono-data text-[10px] text-on-surface-variant mt-1">FastAPI</p>
+</div>
+<div class="z-10 bg-surface-container/60 backdrop-blur-md border border-outline-variant/50 rounded-lg p-4 w-40 text-center absolute bottom-[10%] left-1/2 -translate-x-1/2 hover:border-tertiary transition-colors">
+<span class="material-symbols-outlined text-tertiary text-2xl mb-1">traffic</span>
+<h4 class="font-label-caps text-on-surface uppercase">Dashboard UI</h4>
+<p class="font-mono-data text-[10px] text-on-surface-variant mt-1">Vanilla HTML/JS</p>
+</div>
+<div class="z-10 bg-surface-container/60 backdrop-blur-md border border-outline-variant/50 rounded-lg p-4 w-40 text-center absolute top-1/2 left-[10%] -translate-y-1/2 hover:border-primary-fixed-dim transition-colors hidden md:block">
+<span class="material-symbols-outlined text-primary-fixed-dim text-2xl mb-1">database</span>
+<h4 class="font-label-caps text-on-surface uppercase">State Cache</h4>
+<p class="font-mono-data text-[10px] text-on-surface-variant mt-1">Redis Cluster</p>
+</div>
+<div class="z-10 bg-surface-container/60 backdrop-blur-md border border-outline-variant/50 rounded-lg p-4 w-40 text-center absolute top-1/2 right-[10%] -translate-y-1/2 hover:border-primary-fixed-dim transition-colors hidden md:block">
+<span class="material-symbols-outlined text-primary-fixed-dim text-2xl mb-1">analytics</span>
+<h4 class="font-label-caps text-on-surface uppercase">RL Agents</h4>
+<p class="font-mono-data text-[10px] text-on-surface-variant mt-1">IPPO Multi-Agent</p>
+</div>
+</div>
+</div>
+<div class="col-span-12 lg:col-span-4 space-y-gutter flex flex-col">
+<div class="bg-surface-container-low/40 backdrop-blur-[20px] border border-outline-variant/30 rounded-xl p-md flex-1">
+<h4 class="font-label-caps text-on-surface-variant mb-4 flex items-center gap-2 uppercase">
+<span class="material-symbols-outlined text-[16px]">thermostat</span> Node Thermal Specs
+                            </h4>
+<div class="space-y-4">
+<div>
+<div class="flex justify-between font-mono-data text-sm mb-1">
+<span class="text-on-surface">NPU Array Alpha</span>
+<span class="text-secondary">72°C</span>
+</div>
+<div class="h-1 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-secondary w-[72%] shadow-[0_0_10px_rgba(254,203,0,0.5)]"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between font-mono-data text-sm mb-1">
+<span class="text-on-surface">Vision Processor</span>
+<span class="text-error">89°C</span>
+</div>
+<div class="h-1 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-error w-[89%] shadow-[0_0_10px_rgba(255,180,171,0.5)]"></div>
+</div>
+<p class="font-mono-data text-[10px] text-error mt-1 flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">warning</span> Throttling Active
+                                    </p>
+</div>
+</div>
+</div>
+
+<!-- HARDWARE CONSTRAINTS COMPILED -->
+<div class="bg-surface-container-low/40 backdrop-blur-[20px] border border-outline-variant/30 rounded-xl p-md">
+    <h4 class="font-label-caps text-on-surface-variant mb-4 flex items-center gap-2 uppercase">
+        <span class="material-symbols-outlined text-[16px]">memory</span> Hardware Constraints: RTX 3050 (4GB VRAM)
+    </h4>
+    <ul class="space-y-3 font-mono-data text-sm text-on-surface-variant">
+        <li class="flex justify-between border-b border-outline-variant/20 pb-2">
+            <span>VRAM Overhead</span>
+            <span class="text-error">3.8 / 4.0 GB (Critical)</span>
+        </li>
+        <li class="flex justify-between border-b border-outline-variant/20 pb-2">
+            <span>Batch Size Limit</span>
+            <span class="text-on-surface">Capped at 64</span>
+        </li>
+        <li class="flex justify-between border-b border-outline-variant/20 pb-2">
+            <span>Thermal Throttling</span>
+            <span class="text-secondary">Active @ >80°C</span>
+        </li>
+        <li class="flex justify-between pt-1">
+            <span>Compute Bottleneck</span>
+            <span class="text-on-surface">Shared CPU/GPU Bus</span>
+        </li>
+    </ul>
+    <p class="mt-4 text-[11px] text-on-surface-variant italic border-t border-white/5 pt-2 leading-relaxed">
+        *System Note: The current model is constrained by the 4GB VRAM limit of the onboard RTX 3050, 
+        necessitating strict observation space clipping and restricting multi-agent training to 
+        small, sequential simulation windows to avoid Out-Of-Memory (OOM) failures.*
+    </p>
+</div>
+</div>
+</section>
+
+<!-- EVOLUTION ROADMAP ADDED HERE -->
+<section class="bg-surface-container-low/40 border border-outline-variant/30 rounded-xl p-lg relative overflow-hidden">
+    <div class="absolute right-0 top-0 w-64 h-64 bg-secondary/5 rounded-full blur-[100px] pointer-events-none"></div>
+    <h3 class="font-headline-md text-on-surface mb-6 flex items-center gap-2">
+        <span class="material-symbols-outlined text-on-surface-variant">rocket_launch</span>
+        Evolution Roadmap
+    </h3>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 relative z-10">
+        <div class="p-6 border-l-2 border-primary bg-primary/5 rounded-r">
+            <div class="flex items-center gap-2 mb-2">
+                <span class="material-symbols-outlined text-primary text-sm">filter_1</span>
+                <h4 class="font-label-caps text-primary tracking-widest uppercase">Phase 1: Multi-Agent</h4>
+            </div>
+            <p class="text-[14px] text-on-surface-variant mt-2 leading-relaxed font-body-md">Transitioning to Independent PPO (IPPO) to enable 3x3 grid coordination without centralized retraining. Distributing tensor logic allows cross-intersection awareness without exponential computational explosion.</p>
+        </div>
+        <div class="p-6 border-l-2 border-secondary bg-secondary/5 rounded-r">
+            <div class="flex items-center gap-2 mb-2">
+                <span class="material-symbols-outlined text-secondary text-sm">filter_2</span>
+                <h4 class="font-label-caps text-secondary tracking-widest uppercase">Phase 2: Async Cycles</h4>
+            </div>
+            <p class="text-[14px] text-on-surface-variant mt-2 leading-relaxed font-body-md">Moving from lock-step phase rotation to independent, demand-responsive intersection scheduling. Corridors will organically sync green-waves based on real-time vehicle clustering density.</p>
+        </div>
+        <div class="p-6 border-l-2 border-tertiary bg-tertiary/5 rounded-r">
+            <div class="flex items-center gap-2 mb-2">
+                <span class="material-symbols-outlined text-tertiary text-sm">filter_3</span>
+                <h4 class="font-label-caps text-tertiary tracking-widest uppercase">Phase 3: Sim-to-Real</h4>
+            </div>
+            <p class="text-[14px] text-on-surface-variant mt-2 leading-relaxed font-body-md">Deploying model quantization for Edge TPU devices to bridge the gap between SUMO and real-world traffic signals. Ensuring lightweight runtime metrics pass safety certifications.</p>
+        </div>
+    </div>
+</section>
+
+<section class="bg-surface-container-low/40 backdrop-blur-[20px] border border-outline-variant/30 rounded-xl p-lg overflow-hidden relative">
+<div class="flex items-center justify-between mb-6">
+<h3 class="font-headline-md text-on-surface flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">data_table</span>
+                            System Diagnostic Report
+                        </h3>
+<span class="px-3 py-1 bg-surface-container-high rounded border border-outline-variant/50 font-mono-data text-xs text-on-surface-variant flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_rgba(86,228,114,0.8)]"></span> Live Telemetry
+                        </span>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="border-b border-outline-variant/30 font-label-caps text-on-surface-variant uppercase">
+<th class="py-4 px-4 font-normal tracking-wide">Node ID</th>
+<th class="py-4 px-4 font-normal tracking-wide">Location</th>
+<th class="py-4 px-4 font-normal tracking-wide">Status</th>
+<th class="py-4 px-4 font-normal tracking-wide">Thermal Load</th>
+<th class="py-4 px-4 font-normal tracking-wide">Errors (24h)</th>
+</tr>
+</thead>
+<tbody class="font-mono-data text-sm">
+<tr class="border-b border-outline-variant/10 hover:bg-white/[0.02] transition-colors">
+<td class="py-3 px-4 text-primary">ND-77A1</td>
+<td class="py-3 px-4 text-on-surface">Downtown Sec 4</td>
+<td class="py-3 px-4">
+<span class="inline-flex items-center gap-1 text-primary"><span class="material-symbols-outlined text-[14px]">check_circle</span> Optimal</span>
+</td>
+<td class="py-3 px-4 text-on-surface">45°C</td>
+<td class="py-3 px-4 text-on-surface-variant">0</td>
+</tr>
+<tr class="border-b border-outline-variant/10 hover:bg-white/[0.02] transition-colors">
+<td class="py-3 px-4 text-primary">ND-82B3</td>
+<td class="py-3 px-4 text-on-surface">Westway Intersect</td>
+<td class="py-3 px-4">
+<span class="inline-flex items-center gap-1 text-secondary"><span class="material-symbols-outlined text-[14px]">warning</span> Warning</span>
+</td>
+<td class="py-3 px-4 text-secondary drop-shadow-[0_0_5px_rgba(254,203,0,0.5)]">78°C</td>
+<td class="py-3 px-4 text-on-surface-variant">12</td>
+</tr>
+<tr class="border-b border-outline-variant/10 hover:bg-white/[0.02] transition-colors bg-error/5">
+<td class="py-3 px-4 text-primary">ND-91C9</td>
+<td class="py-3 px-4 text-on-surface">Industrial Park N</td>
+<td class="py-3 px-4">
+<span class="inline-flex items-center gap-1 text-error"><span class="material-symbols-outlined text-[14px]">error</span> Throttled</span>
+</td>
+<td class="py-3 px-4 text-error font-bold drop-shadow-[0_0_8px_rgba(255,180,171,0.6)]">92°C</td>
+<td class="py-3 px-4 text-on-surface-variant">47</td>
+</tr>
+<tr class="hover:bg-white/[0.02] transition-colors">
+<td class="py-3 px-4 text-primary">ND-44D2</td>
+<td class="py-3 px-4 text-on-surface">Residential East</td>
+<td class="py-3 px-4">
+<span class="inline-flex items-center gap-1 text-primary"><span class="material-symbols-outlined text-[14px]">check_circle</span> Optimal</span>
+</td>
+<td class="py-3 px-4 text-on-surface">42°C</td>
+<td class="py-3 px-4 text-on-surface-variant">1</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</div>
+</div>
+</main>
+</body>
+</html>

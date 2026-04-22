@@ -35,7 +35,7 @@ from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.monitor import Monitor
 
 from rl.traffic_env import TrafficEnv4Phase
-from configs.parameters import TrainingConfig, Paths
+from configs.parameters import TrainingConfig, PathConfig
 
 
 class ProgressCallback(BaseCallback):
@@ -202,8 +202,8 @@ Examples:
     parser.add_argument(
         '--save-freq',
         type=int,
-        default=TrainingConfig.SAVE_FREQUENCY,
-        help=f'Save checkpoint every N timesteps (default: {TrainingConfig.SAVE_FREQUENCY})'
+        default=TrainingConfig.SAVE_FREQ,
+        help=f'Save checkpoint every N timesteps (default: {TrainingConfig.SAVE_FREQ})'
     )
     
     # Environment settings
@@ -281,7 +281,7 @@ def create_log_directory(base_name: str = None) -> str:
     """
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     log_name = f"{base_name}_{timestamp}" if base_name else timestamp
-    log_dir = os.path.join(Paths.LOGS_DIR, log_name)
+    log_dir = os.path.join(PathConfig.LOG_DIR, log_name)
     
     os.makedirs(log_dir, exist_ok=True)
     
@@ -374,9 +374,10 @@ def setup_callbacks(
     
     # Curriculum callback (if enabled)
     if enable_curriculum:
-        from configs.parameters import CurriculumConfig
+        # Default curriculum transitions: stage 0→1 at 60K, 1→2 at 120K timesteps
+        default_transitions = [60000, 120000]
         curriculum_callback = CurriculumCallback(
-            stage_transitions=CurriculumConfig.TRANSITIONS.copy(),
+            stage_transitions=default_transitions.copy(),
             verbose=verbose
         )
         callbacks.append(curriculum_callback)
@@ -420,7 +421,7 @@ def train(args):
     """
     # Setup directories
     log_dir = args.log_dir or create_log_directory(args.model_name)
-    checkpoint_dir = Paths.CHECKPOINTS_DIR
+    checkpoint_dir = PathConfig.CHECKPOINT_DIR
     
     # Print configuration
     print_training_config(args, log_dir, checkpoint_dir)
