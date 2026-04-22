@@ -4,6 +4,13 @@ IntelliLight Configuration Parameters
 
 Centralized configuration for 4-phase production system.
 
+ILPS v2.0 UPDATES:
+- Per-phase decision making (ILPS architecture)
+- MIN_GREEN raised to 15s for pedestrian safety
+- GREEN_DURATIONS shifted to [15, 20, 25, 30, 35, 40, 45, 50]
+- 16-dim ILPS observation space with neighbor coordination
+- Web-integration-ready config placeholders
+
 UPDATES:
 - 4-phase signal parameters
 - Enhanced safety settings
@@ -62,10 +69,12 @@ class SignalConfig:
     }
     
     # Green duration options (seconds)
-    GREEN_DURATIONS = [10, 15, 20, 25, 30, 35, 40, 45]
+    # Legacy (centralized): [10, 15, 20, 25, 30, 35, 40, 45]
+    # ILPS v2.0:           [15, 20, 25, 30, 35, 40, 45, 50]
+    GREEN_DURATIONS = [15, 20, 25, 30, 35, 40, 45, 50]
     
     # Minimum timings (safety constraints)
-    MIN_GREEN = 10      # Minimum green time
+    MIN_GREEN = 15      # Minimum green time (raised from 10 for pedestrian safety)
     ALL_RED = 4         # Clearance interval between phases
     YELLOW_TIME = 3     # Yellow light duration (if defined in network)
     
@@ -196,10 +205,20 @@ class ObservationConfig:
     MAX_QUEUE = 50.0      # Expected max queue length
     MAX_WAIT = 120.0      # Expected max wait time
     
-    # Observation components (4-phase)
+    # Observation components (4-phase, centralized)
     OBS_SIZE = 14  # queues(4) + delta(4) + waits(4) + emergency(1) + phase(1)
     
-    # Feature indices (for debugging)
+    # ILPS observation (per-junction, 20 dims)
+    # Layout:
+    #   queues(4) + delta(4) + waits(4) + emergency(1) + phase(1) = 14 (local)
+    #   upstream_phase(1) + time_since_upstream_switch(1)           = 2  (upstream)
+    #   downstream_phase(1) + time_since_downstream_switch(1)      = 2  (downstream)
+    #   has_upstream(1) + has_downstream(1)                        = 2  (topology)
+    # Total = 20
+    # Note: junction_id is intentionally dropped for true ILPS generalization
+    ILPS_OBS_SIZE = 20
+    
+    # Feature indices — centralized (for debugging)
     QUEUE_START = 0
     QUEUE_END = 4
     DELTA_START = 4
@@ -208,6 +227,14 @@ class ObservationConfig:
     WAIT_END = 12
     EMERGENCY_IDX = 12
     PHASE_IDX = 13
+    
+    # Feature indices — ILPS (for debugging)
+    ILPS_UPSTREAM_PHASE = 14
+    ILPS_UPSTREAM_TIME = 15
+    ILPS_DOWNSTREAM_PHASE = 16
+    ILPS_DOWNSTREAM_TIME = 17
+    ILPS_HAS_UPSTREAM = 18
+    ILPS_HAS_DOWNSTREAM = 19
 
 
 # ============================================================================
@@ -324,6 +351,67 @@ class PathConfig:
     # SUMO network
     NETWORK_DIR = "."
     NETWORK_FILE = "intersection_net.xml"
+    
+    # ILPS model
+    ILPS_MODEL = "models/checkpoints/intellilight_ilps_final.zip"
+
+
+# ============================================================================
+# ILPS CONFIGURATION
+# ============================================================================
+
+class ILPSConfig:
+    """Independent Learning with Parameter Sharing settings."""
+    
+    # Feature flags
+    ENABLE_ILPS = True
+    NEIGHBOR_OBSERVATION = True     # Include upstream/downstream phase info
+    PER_PHASE_DECISION = True       # One phase at a time (vs batch)
+    
+    # Execution model
+    PARALLEL_EXECUTION = True       # Execute all junctions for same phase simultaneously
+    
+    # Observation
+    OBS_SIZE = 20                   # 14 local + 6 neighbor/topology
+    DROP_JUNCTION_ID = True         # True ILPS: position-invariant control
+    
+    # Default junction count (can be overridden at runtime)
+    DEFAULT_N_JUNCTIONS = 3
+
+
+# ============================================================================
+# ADMIN PANEL CONFIGURATION (WEB-READY PLACEHOLDER)
+# ============================================================================
+
+class AdminPanelConfig:
+    """
+    Configuration for the Admin Control Panel.
+    
+    These settings define the interface contract between the RL backend
+    and a future web frontend. The web team can use these values to
+    configure their WebSocket/REST client.
+    
+    NOTE: No web server is implemented here. This is the contract.
+    """
+    
+    # Override system
+    OVERRIDE_WINDOW_SECONDS = 5     # Time admin has to override a decision
+    MAX_OVERRIDE_DELTA = 10         # ±10 seconds adjustment range
+    
+    # Communication
+    WEBSOCKET_PORT = 8000           # Default WebSocket port for admin panel
+    METRICS_UPDATE_RATE_HZ = 1      # Dashboard refresh rate
+    
+    # Green-wave
+    ENABLE_GREEN_WAVE = True
+    DEFAULT_SPEED_MPS = 15          # 15 m/s ≈ 54 km/h for offset calculation
+    
+    # Modes
+    # TRAINING: Override disabled, pure RL
+    # DEMO: Override enabled, 5s window
+    # DEPLOYMENT: Override enabled, full audit logging
+    SYSTEM_MODES = ["TRAINING", "DEMO", "DEPLOYMENT"]
+    DEFAULT_MODE = "TRAINING"
 
 
 # ============================================================================
@@ -341,6 +429,8 @@ training = TrainingConfig()
 evaluation = EvaluationConfig()
 deployment = DeploymentConfig()
 paths = PathConfig()
+ilps = ILPSConfig()
+admin_panel = AdminPanelConfig()
 
 
 # Convenience function
@@ -375,6 +465,19 @@ def print_config():
     print(f"   Total steps: {training.TOTAL_TIMESTEPS:,}")
     print(f"   Learning rate: {training.LEARNING_RATE}")
     print(f"   Parallel envs: {training.N_ENVS}")
+    
+    print("\n🔄 ILPS:")
+    print(f"   Enabled: {ilps.ENABLE_ILPS}")
+    print(f"   Per-phase decisions: {ilps.PER_PHASE_DECISION}")
+    print(f"   Parallel execution: {ilps.PARALLEL_EXECUTION}")
+    print(f"   Observation size: {ilps.OBS_SIZE}")
+    print(f"   Drop junction ID: {ilps.DROP_JUNCTION_ID}")
+    
+    print("\n🌐 ADMIN PANEL (web-ready):")
+    print(f"   Override window: {admin_panel.OVERRIDE_WINDOW_SECONDS}s")
+    print(f"   Override delta: ±{admin_panel.MAX_OVERRIDE_DELTA}s")
+    print(f"   Default mode: {admin_panel.DEFAULT_MODE}")
+    print(f"   Green-wave: {admin_panel.ENABLE_GREEN_WAVE}")
     
     print("\n" + "=" * 70)
 
