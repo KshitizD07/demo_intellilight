@@ -422,6 +422,62 @@ class RLController(TrafficController):
         return "IntelliLight-RL"
 
 
+class ILPSRLController(TrafficController):
+    """
+    Wrapper for trained ILPS per-phase model.
+
+    Unlike RLController (centralized, MultiDiscrete action), this controller
+    uses a Discrete(8) action space and Box(20,) observations — one junction
+    at a time.
+
+    When evaluated on the PerPhaseCorridorEnv, each step() call gets a
+    single-junction observation and returns a single duration index.
+    """
+
+    def __init__(self, model_path: str, deterministic: bool = True):
+        """
+        Load a trained ILPS model.
+
+        Args:
+            model_path:    Path to .zip checkpoint
+            deterministic: Use deterministic policy (no exploration)
+        """
+        from stable_baselines3 import PPO
+
+        self.model = PPO.load(model_path)
+        self.deterministic = deterministic
+
+        logger.info(f"ILPSRLController loaded from: {model_path}")
+
+    def select_action(
+        self,
+        observation: np.ndarray,
+        info: Optional[Dict] = None
+    ) -> int:
+        """
+        Select per-junction, per-phase action using ILPS policy.
+
+        Args:
+            observation: Box(20,) per-junction observation
+            info:        Additional info (unused)
+
+        Returns:
+            int: Duration index (0-7) → GREEN_DURATIONS[action]
+        """
+        action, _ = self.model.predict(
+            observation, deterministic=self.deterministic
+        )
+        return int(action)
+
+    def reset(self):
+        """Reset (no-op for RL)."""
+        pass
+
+    def get_name(self) -> str:
+        """Return controller name."""
+        return "IntelliLight-ILPS"
+
+
 if __name__ == "__main__":
     """Test baseline controllers."""
     import sys
