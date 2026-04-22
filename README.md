@@ -38,6 +38,7 @@ The system outperforms both the classic Fixed-Timer and industry-standard Max-Pr
 - **Curriculum Learning** — Training progresses through WEEKEND (easy) → EVENING_RUSH → MORNING_RUSH scenarios automatically
 - **Realistic Traffic Generation** — Probabilistic demand curves with time-of-day multipliers, volatility, and random incident events
 - **Baseline Comparison Suite** — Full evaluation pipeline comparing RL against Fixed-Timer and Max-Pressure controllers across multiple scenarios
+- **Real-time Web Dashboard** — Decoupled FastAPI and Redis architecture providing live telemetry visualization and simulation controls via a sleek, cyberpunk-themed web interface
 
 ---
 
@@ -67,6 +68,11 @@ Intelli-Light/
 │   ├── metrics_calculator.py   # Computes wait time, throughput, fairness metrics
 │   ├── baseline_controllers.py # Fixed-Timer and Max-Pressure baselines
 │   └── evaluation_callback.py  # SB3 callback for periodic evaluation
+│
+├── webapp/                     # Web dashboard and API backend
+│   ├── main.py                 # FastAPI server and WebSocket bridge
+│   ├── static/                 # Frontend assets (HTML, CSS, JS)
+│   └── dashboard.py            # Example/helper dashboard script
 │
 ├── main.py                     # CLI entry point: train / evaluate / simulate
 ├── requirements.txt            # Python dependencies
@@ -110,6 +116,21 @@ python main.py evaluate --model models/checkpoints/intellilight_corridor_final.z
 # Run with SUMO GUI for visual inspection
 python main.py evaluate --model models/checkpoints/intellilight_corridor_final.zip --gui
 ```
+
+### Run the Web Dashboard
+
+To monitor the simulation in real-time using the web dashboard:
+
+1. Guarantee a Redis server is installed and running locally:
+   ```bash
+   redis-server
+   ```
+2. Start the web application:
+   ```bash
+   cd webapp
+   uvicorn main:app --reload --port 8000
+   ```
+3. Open `http://localhost:8000` in your web browser.
 
 
 ---

@@ -370,8 +370,10 @@ class TrafficEnv4Phase(gym.Env):
         """Check for emergency vehicles and determine direction."""
         vehicles = traci.vehicle.getIDList()
         
-        # Find emergency vehicles (prefix with "emergency_")
-        emerg = [v for v in vehicles if v.startswith("emergency_")]
+        # Find emergency vehicles (route_generator uses "ambulance_",
+        # admin console injects "emergency_")
+        emerg = [v for v in vehicles
+                 if v.startswith("ambulance_") or v.startswith("emergency_")]
         
         if emerg:
             self.emergency_active = True
@@ -457,6 +459,16 @@ class TrafficEnv4Phase(gym.Env):
         else:
             return "MORNING_RUSH"
     
+    def set_curriculum_stage(self, stage: int):
+        """
+        Set curriculum stage (called by CurriculumCallback via env_method).
+        
+        Args:
+            stage: Curriculum difficulty (0=WEEKEND, 1=EVENING_RUSH, 2=MORNING_RUSH)
+        """
+        self.curriculum_stage = max(0, min(2, stage))
+        self.reward_calc.set_curriculum_stage(stage)
+
     def close(self):
         """Clean up SUMO simulation."""
         self.sumo.close()

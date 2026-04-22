@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>INTELLI-LIGHT Admin Console</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary-fixed-variant": "#930005",
+                        "on-error": "#690005",
+                        "primary": "#56e472",
+                        "surface-container-lowest": "#0e0e0e",
+                        "secondary-container": "#fecb00",
+                        "outline-variant": "#3d4a3c",
+                        "on-tertiary-container": "#890005",
+                        "on-surface": "#e5e2e1",
+                        "on-tertiary": "#690003",
+                        "on-secondary": "#3d2f00",
+                        "tertiary-fixed-dim": "#ffb4aa",
+                        "secondary-fixed-dim": "#f1c100",
+                        "on-background": "#e5e2e1",
+                        "primary-fixed-dim": "#53e16f",
+                        "tertiary-fixed": "#ffdad5",
+                        "surface-container-highest": "#353534",
+                        "secondary": "#ffecc0",
+                        "primary-fixed": "#72fe88",
+                        "on-surface-variant": "#bccbb8",
+                        "surface-variant": "#353534",
+                        "inverse-on-surface": "#313030",
+                        "surface-container-low": "#1c1b1b",
+                        "surface-container": "#201f1f",
+                        "surface-bright": "#3a3939",
+                        "background": "#131313",
+                        "surface": "#131313",
+                        "secondary-fixed": "#ffe08b",
+                        "on-secondary-fixed-variant": "#584400",
+                        "on-error-container": "#ffdad6",
+                        "on-primary-fixed": "#002107",
+                        "tertiary": "#ffb8ae",
+                        "surface-dim": "#131313",
+                        "on-secondary-container": "#6e5700",
+                        "surface-container-high": "#2a2a2a",
+                        "outline": "#869584",
+                        "on-tertiary-fixed": "#410001",
+                        "on-primary": "#003911",
+                        "error-container": "#93000a",
+                        "inverse-primary": "#006e28",
+                        "surface-tint": "#53e16f",
+                        "on-secondary-fixed": "#241a00",
+                        "error": "#ffb4ab",
+                        "on-primary-fixed-variant": "#00531c",
+                        "inverse-surface": "#e5e2e1",
+                        "tertiary-container": "#ff8e80",
+                        "primary-container": "#34c759",
+                        "on-primary-container": "#004d1a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "md": "16px",
+                        "xs": "4px",
+                        "lg": "24px",
+                        "xl": "48px",
+                        "margin": "32px",
+                        "unit": "4px",
+                        "sm": "8px",
+                        "gutter": "24px"
+                    },
+                    "fontFamily": {
+                        "display-xl": ["Space Grotesk"],
+                        "label-caps": ["Space Grotesk"],
+                        "headline-md": ["Space Grotesk"],
+                        "headline-lg": ["Space Grotesk"],
+                        "body-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "mono-data": ["Inter"]
+                    },
+                    "fontSize": {
+                        "display-xl": ["48px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-caps": ["12px", { "lineHeight": "1.0", "letterSpacing": "0.1em", "fontWeight": "700" }],
+                        "headline-md": ["24px", { "lineHeight": "1.3", "fontWeight": "500" }],
+                        "headline-lg": ["32px", { "lineHeight": "1.2", "fontWeight": "600" }],
+                        "body-lg": ["18px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "body-md": ["16px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "mono-data": ["14px", { "lineHeight": "1.0", "letterSpacing": "-0.01em", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .crt::before {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 2;
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+        }
+        .crt { overflow: hidden; position: relative; }
+        .scanline {
+            width: 100%; height: 100px; z-index: 1; position: absolute; pointer-events: none;
+            background: linear-gradient(0deg, rgba(0,0,0,0) 0%, rgba(52,199,89,0.1) 50%, rgba(0,0,0,0) 100%);
+            opacity: 0.1;
+        }
+        .glow-text { text-shadow: 0 0 10px rgba(52, 199, 89, 0.5); }
+        .glass-panel { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .neon-glow-primary { box-shadow: 0 0 15px rgba(52, 199, 89, 0.2), inset 0 0 10px rgba(52, 199, 89, 0.1); }
+        .neon-glow-error { box-shadow: 0 0 15px rgba(255, 59, 48, 0.2), inset 0 0 10px rgba(255, 59, 48, 0.1); }
+    </style>
+</head>
+<body class="bg-[#050505] text-on-background crt min-h-screen flex flex-col font-body-md text-body-md overflow-x-hidden">
+    <div class="scanline"></div>
+    <!-- TopNavBar -->
+    <header class="flex justify-between items-center w-full px-6 h-16 bg-black/80 backdrop-blur-xl border-b border-white/10 shadow-[0_0_20px_rgba(52,199,89,0.1)] z-50">
+        <div class="flex items-center gap-xl">
+            <div class="text-xl font-black text-[#34C759] tracking-tighter">INTELLI-LIGHT</div>
+            <nav class="flex gap-lg font-['Space_Grotesk'] uppercase tracking-widest text-sm">
+                <a class="text-white/50 hover:text-white/80 transition-colors" href="/">Dashboard</a>
+                <a class="text-[#34C759] border-b-2 border-[#34C759] pb-1" href="/static/admin.html">Admin</a>
+                <a class="text-white/50 hover:text-white/80 transition-colors" href="/static/about.html">About</a>
+            </nav>
+        </div>
+        <div class="flex items-center gap-md">
+            <span class="material-symbols-outlined text-[#34C759] cursor-pointer">notifications</span>
+            <span class="material-symbols-outlined text-[#34C759] cursor-pointer">settings</span>
+        </div>
+    </header>
+
+    <div class="flex flex-1 relative">
+        <!-- Main Content Area -->
+        <main class="flex-1 p-margin pt-10 min-h-screen">
+            <header class="mb-xl flex justify-between items-end">
+                <div>
+                    <h1 class="font-display-xl text-display-xl text-on-surface mb-xs uppercase">Admin_Console</h1>
+                    <p id="system-status" class="font-mono-data text-mono-data text-primary glow-text">SYSTEM.STATUS: NOMINAL</p>
+                </div>
+                <div class="text-right">
+                    <p class="font-mono-data text-mono-data text-on-surface-variant">LOC: <span class="text-on-surface">SECTOR 7G</span></p>
+                    <p id="current-time" class="font-mono-data text-mono-data text-on-surface-variant">TIME: <span class="text-on-surface">--:--:-- UTC</span></p>
+                </div>
+            </header>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+                <!-- System Controls -->
+                <div class="col-span-1 lg:col-span-4 flex flex-col gap-gutter">
+                    <div class="glass-panel p-lg rounded-xl neon-glow-primary">
+                        <h3 class="font-headline-md text-headline-md text-primary mb-lg flex items-center gap-sm border-b border-white/10 pb-sm uppercase">
+                            <span class="material-symbols-outlined">tune</span> Core_Controls
+                        </h3>
+                        <div class="flex flex-col gap-md">
+                            <div class="flex justify-between items-center p-sm hover:bg-white/5 rounded">
+                                <span class="font-label-caps text-label-caps text-on-surface">AUTO_ROUTING</span>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input id="auto-routing-toggle" checked="" class="sr-only peer" type="checkbox"/>
+                                    <div class="w-11 h-6 bg-surface-variant rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-primary after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
+                                </label>
+                            </div>
+                            <div class="flex justify-between items-center p-sm hover:bg-white/5 rounded">
+                                <span class="font-label-caps text-label-caps text-on-surface">PREDICTIVE_AI</span>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input id="predictive-ai-toggle" checked="" class="sr-only peer" type="checkbox"/>
+                                    <div class="w-11 h-6 bg-surface-variant rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-primary after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
+                                </label>
+                            </div>
+                            <button id="emergency-override-btn" class="w-full py-4 mt-4 bg-error/10 text-error border border-error/50 rounded-DEFAULT font-label-caps uppercase tracking-widest hover:bg-error/20 transition-all neon-glow-error">
+                                EMERGENCY OVERRIDE
+                            </button>
+                        </div>
+                        
+                        <div class="mt-lg pt-lg border-t border-white/10">
+                            <label class="font-label-caps text-label-caps text-on-surface block mb-sm">GLOBAL_FLOW_RATE</label>
+                            <input id="flow-rate-slider" class="w-full h-2 bg-surface-variant rounded-lg appearance-none cursor-pointer accent-primary" max="100" min="0" type="range" value="75"/>
+                            <div class="flex justify-between font-mono-data text-mono-data text-on-surface-variant mt-sm">
+                                <span>MIN</span>
+                                <span id="flow-rate-val" class="text-primary glow-text">75%</span>
+                                <span>MAX</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Training Panel -->
+                    <div class="glass-panel p-lg rounded-xl border border-secondary-container/30">
+                        <h3 class="font-headline-md text-headline-md text-secondary-container mb-lg flex items-center gap-sm border-b border-white/10 pb-sm uppercase">
+                            <span class="material-symbols-outlined">model_training</span> Training_Suite
+                        </h3>
+                        <div class="space-y-4">
+                            <button id="start-training-btn" class="w-full py-3 bg-secondary-container/10 text-secondary-container border border-secondary-container/50 rounded uppercase text-sm font-bold hover:bg-secondary-container/20">
+                                START TRAINING SESSION
+                            </button>
+                            <button id="pause-training-btn" class="w-full py-3 bg-white/5 text-white/50 border border-white/10 rounded uppercase text-sm font-bold hover:bg-white/10 hidden">
+                                PAUSE TRAINING
+                            </button>
+                            <div class="pt-2">
+                                <label class="font-label-caps text-xs text-white/40 block mb-2 uppercase">Scenario Selection</label>
+                                <select id="scenario-select" class="w-full bg-black/40 border border-white/10 text-white p-2 rounded text-sm focus:outline-none focus:border-primary">
+                                    <option value="WEEKEND">WEEKEND (EASY)</option>
+                                    <option value="EVENING_RUSH">EVENING RUSH (HEAVY)</option>
+                                    <option value="MORNING_RUSH">MORNING RUSH (CRITICAL)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Hardware & Logs -->
+                <div class="col-span-1 lg:col-span-8 flex flex-col gap-gutter">
+                    <!-- Telemetry Cards -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-gutter">
+                        <!-- GPU Diagnostics -->
+                        <div class="glass-panel p-lg rounded-xl relative overflow-hidden">
+                            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary/0 via-primary to-primary/0 opacity-50"></div>
+                            <h3 class="font-label-caps text-label-caps text-on-surface-variant mb-md flex justify-between uppercase">
+                                <span>GPU_CLUSTER [RTX 3050]</span>
+                                <span id="gpu-status" class="text-primary flex items-center gap-xs"><span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span> ONLINE</span>
+                            </h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <div class="flex justify-between font-mono-data text-mono-data mb-1">
+                                        <span class="text-on-surface">LOAD</span>
+                                        <span id="gpu-load-val" class="text-primary">--%</span>
+                                    </div>
+                                    <div class="w-full bg-surface-variant rounded-full h-1.5">
+                                        <div id="gpu-load-bar" class="bg-primary h-1.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between font-mono-data text-mono-data mb-1">
+                                        <span class="text-on-surface">TEMP</span>
+                                        <span id="gpu-temp-val" class="text-primary">--°C</span>
+                                    </div>
+                                    <div class="w-full bg-surface-variant rounded-full h-1.5">
+                                        <div id="gpu-temp-bar" class="bg-primary h-1.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between font-mono-data text-mono-data mb-1">
+                                        <span class="text-on-surface">VRAM (4GB)</span>
+                                        <span id="vram-val" class="text-primary">--%</span>
+                                    </div>
+                                    <div class="w-full bg-surface-variant rounded-full h-1.5">
+                                        <div id="vram-bar" class="bg-primary h-1.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- System CPU Diagnostics -->
+                        <div class="glass-panel p-lg rounded-xl relative overflow-hidden">
+                            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary/0 via-primary to-primary/0 opacity-50"></div>
+                            <h3 class="font-label-caps text-label-caps text-on-surface-variant mb-md flex justify-between uppercase">
+                                <span>CPU_CORE_ARRAY</span>
+                                <span id="cpu-status" class="text-primary flex items-center gap-xs"><span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span> ONLINE</span>
+                            </h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <div class="flex justify-between font-mono-data text-mono-data mb-1">
+                                        <span class="text-on-surface">USAGE</span>
+                                        <span id="cpu-usage-val" class="text-primary">--%</span>
+                                    </div>
+                                    <div class="w-full bg-surface-variant rounded-full h-1.5">
+                                        <div id="cpu-usage-bar" class="bg-primary h-1.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between font-mono-data text-mono-data mb-1">
+                                        <span class="text-on-surface">RAM</span>
+                                        <span id="ram-val" class="text-primary">--%</span>
+                                    </div>
+                                    <div class="w-full bg-surface-variant rounded-full h-1.5">
+                                        <div id="ram-bar" class="bg-primary h-1.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-4 pt-2">
+                                    <div class="text-center p-2 bg-white/5 rounded">
+                                        <div class="text-[10px] text-white/30 uppercase">Inference Latency</div>
+                                        <div id="latency-val" class="text-primary font-bold">-- ms</div>
+                                    </div>
+                                    <div class="text-center p-2 bg-white/5 rounded">
+                                        <div class="text-[10px] text-white/30 uppercase">Uptime</div>
+                                        <div id="uptime-val" class="text-primary font-bold">--</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Terminal Logs -->
+                    <div class="glass-panel rounded-xl flex-1 flex flex-col overflow-hidden border border-white/5">
+                        <div class="bg-surface-container-low px-md py-sm border-b border-white/10 flex justify-between items-center">
+                            <span class="font-mono-data text-mono-data text-on-surface-variant text-[12px]">CONSOLE // OUTPUT_STREAM</span>
+                            <div class="flex gap-2">
+                                <span onclick="clearLogs()" class="material-symbols-outlined text-on-surface-variant text-[16px] cursor-pointer hover:text-white">delete</span>
+                            </div>
+                        </div>
+                        <div id="log-container" class="p-md font-mono-data text-mono-data text-sm flex-1 overflow-y-auto space-y-1 h-[350px] bg-black/20">
+                            <div class="text-primary">[INIT] Admin session established. Connecting to bridge...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Footer -->
+    <footer class="px-8 py-4 w-full bg-black/40 backdrop-blur-md border-t border-white/10 font-mono text-[10px] tracking-tighter flex justify-between relative z-50">
+        <div class="text-white/20 uppercase">© 2024 INTELLI-LIGHT SYSTEMS. FOR AUTHORIZED PERSONNEL ONLY.</div>
+        <div id="connection-indicator" class="flex items-center gap-2 text-error">
+            <span class="w-2 h-2 rounded-full bg-error"></span>
+            DISCONNECTED FROM BRIDGE
+        </div>
+    </footer>
+
+    <script>
+        const logContainer = document.getElementById('log-container');
+        const connIndicator = document.getElementById('connection-indicator');
+        
+        function addLog(msg, type = 'info') {
+            const div = document.createElement('div');
+            const time = new Date().toLocaleTimeString();
+            let colorClass = 'text-on-surface-variant';
+            if (type === 'error') colorClass = 'text-error';
+            if (type === 'warn') colorClass = 'text-secondary-container';
+            if (type === 'success') colorClass = 'text-primary';
+            
+            div.className = colorClass;
+            div.innerHTML = `<span class="text-primary/50">[${time}]</span> ${msg}`;
+            logContainer.appendChild(div);
+            logContainer.scrollTop = logContainer.scrollHeight;
+            
+            // Keep at most 100 logs
+            while (logContainer.children.length > 100) {
+                logContainer.removeChild(logContainer.firstChild);
+            }
+        }
+
+        function clearLogs() {
+            logContainer.innerHTML = '';
+            addLog('Logs cleared.', 'success');
+        }
+
+        async function sendCommand(type, value) {
+            try {
+                const response = await fetch('/api/command', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type, value })
+                });
+                const data = await response.json();
+                if (data.status === 'success') {
+                    addLog(`CMD_${type} sent: ${value}`, 'success');
+                } else {
+                    addLog(`CMD_FAILED: ${data.error || 'Unknown error'}`, 'error');
+                }
+            } catch (err) {
+                addLog(`Connection error while sending command: ${err.message}`, 'error');
+            }
+        }
+
+        // JS Clock
+        setInterval(() => {
+            document.getElementById('current-time').innerHTML = `TIME: <span class="text-on-surface">${new Date().toISOString().split('T')[1].split('.')[0]} UTC</span>`;
+        }, 1000);
+
+        // Control Bindings
+        document.getElementById('emergency-override-btn').onclick = () => sendCommand('EMERGENCY_OVERRIDE', true);
+        document.getElementById('auto-routing-toggle').onchange = (e) => sendCommand('AUTO_ROUTING', e.target.checked);
+        document.getElementById('predictive-ai-toggle').onchange = (e) => sendCommand('PREDICTIVE_AI', e.target.checked);
+        document.getElementById('flow-rate-slider').oninput = (e) => {
+            document.getElementById('flow-rate-val').innerText = e.target.value + '%';
+        };
+        document.getElementById('flow-rate-slider').onchange = (e) => sendCommand('FLOW_RATE', parseInt(e.target.value));
+        
+        document.getElementById('scenario-select').onchange = (e) => sendCommand('SCENARIO', e.target.value);
+        document.getElementById('start-training-btn').onclick = () => {
+            sendCommand('START_TRAINING', true);
+            document.getElementById('start-training-btn').classList.add('hidden');
+            document.getElementById('pause-training-btn').classList.remove('hidden');
+        };
+        document.getElementById('pause-training-btn').onclick = () => {
+            sendCommand('PAUSE_TRAINING', true);
+            document.getElementById('pause-training-btn').classList.add('hidden');
+            document.getElementById('start-training-btn').classList.remove('hidden');
+        };
+
+        // WebSocket Integration
+        let ws;
+        function connectWS() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${protocol}//${window.location.host}/ws/telemetry`);
+            
+            ws.onopen = () => {
+                connIndicator.innerHTML = '<span class="w-2 h-2 rounded-full bg-primary"></span> CONNECTED TO BRIDGE';
+                connIndicator.className = 'flex items-center gap-2 text-primary';
+                addLog('Bridge connection established.', 'success');
+            };
+            
+            ws.onclose = () => {
+                connIndicator.innerHTML = '<span class="w-2 h-2 rounded-full bg-error"></span> BRIDGE OFFLINE';
+                connIndicator.className = 'flex items-center gap-2 text-error';
+                addLog('Bridge connection lost. Retrying...', 'error');
+                setTimeout(connectWS, 3000);
+            };
+            
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                
+                // Traffic Log Forwarding (if present in payload)
+                if (data.msg) {
+                    addLog(data.msg, data.level || 'info');
+                }
+
+                // Update Hardware Telemetry
+                if (data.hardware) {
+                    const hw = data.hardware;
+                    
+                    // CPU/RAM
+                    document.getElementById('cpu-usage-val').innerText = hw.cpu_usage + '%';
+                    document.getElementById('cpu-usage-bar').style.width = hw.cpu_usage + '%';
+                    document.getElementById('ram-val').innerText = hw.ram_usage + '%';
+                    document.getElementById('ram-bar').style.width = hw.ram_usage + '%';
+                    
+                    // GPU Fallback
+                    if (hw.gpu) {
+                        document.getElementById('gpu-status').innerHTML = '<span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span> ONLINE';
+                        document.getElementById('gpu-load-val').innerText = hw.gpu.load + '%';
+                        document.getElementById('gpu-load-bar').style.width = hw.gpu.load + '%';
+                        document.getElementById('gpu-temp-val').innerText = hw.gpu.temp + '°C';
+                        document.getElementById('gpu-temp-bar').style.width = (hw.gpu.temp / 100 * 100) + '%';
+                        document.getElementById('vram-val').innerText = hw.gpu.vram + '%';
+                        document.getElementById('vram-bar').style.width = hw.gpu.vram + '%';
+                    } else {
+                        document.getElementById('gpu-status').innerHTML = '<span class="w-2 h-2 rounded-full bg-white/20"></span> N/A';
+                    }
+
+                    document.getElementById('uptime-val').innerText = hw.uptime || '--';
+                    document.getElementById('latency-val').innerText = (hw.latency || '--') + ' ms';
+                }
+            };
+        }
+
+        connectWS();
+    </script>
+</body>
+</html>

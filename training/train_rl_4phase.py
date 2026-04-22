@@ -56,22 +56,22 @@ class CurriculumCallback(BaseCallback):
         super().__init__(verbose)
         self.current_stage = 0
 
-        # Curriculum thresholds
-        self.stage_thresholds = [
-            {"stage": 0, "until_step": 66000, "scenario": "WEEKEND"},
-            {"stage": 1, "until_step": 133000, "scenario": "EVENING_RUSH"},
-            {"stage": 2, "until_step": 200000, "scenario": "MORNING_RUSH"}
+        # Curriculum transitions: advance when timesteps reach 'from_step'
+        self.stage_transitions = [
+            {"stage": 1, "from_step": 66000, "scenario": "EVENING_RUSH"},
+            {"stage": 2, "from_step": 133000, "scenario": "MORNING_RUSH"}
         ]
 
     def _on_step(self) -> bool:
-        # Check if should advance stage
-        for threshold in self.stage_thresholds:
-            if self.num_timesteps >= threshold["until_step"] and self.current_stage < threshold["stage"]:
-                self.current_stage = threshold["stage"]
+        # Check if should advance to next stage
+        for transition in self.stage_transitions:
+            if (self.num_timesteps >= transition["from_step"]
+                    and self.current_stage < transition["stage"]):
+                self.current_stage = transition["stage"]
 
                 if self.verbose > 0:
                     print(f"\n{'='*70}")
-                    print(f"CURRICULUM STAGE {self.current_stage}: {threshold['scenario']}")
+                    print(f"CURRICULUM STAGE {self.current_stage}: {transition['scenario']}")
                     print(f"{'='*70}\n")
 
                 # Update all environments
