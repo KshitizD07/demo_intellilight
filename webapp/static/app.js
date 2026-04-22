@@ -244,6 +244,19 @@ document.addEventListener("DOMContentLoaded", () => {
         const baseScenario = json.results_by_scenario["WEEKEND"] || json.results_by_scenario["MORNING_RUSH"];
         if(!baseScenario) return;
 
+        // Populate HUD with IntelliLight historical data so UI isn't flat/zeroed
+        const rlStats = baseScenario["IntelliLight-RL"];
+        if (rlStats && rlStats.mean) {
+            updateHUD({
+                cycle: "HISTORICAL",
+                throughput: Math.round(rlStats.mean.throughput),
+                avg_wait: rlStats.mean.avg_wait_time,
+                total_queue: rlStats.mean.avg_queue_length
+            });
+            addTerminalLog(`LOADED HISTORICAL RUN: ${json.timestamp || "N/A"}`);
+            addRlLog("Loaded latest historical run", "System Initialization", "Resume Ready", "", "primary", "history");
+        }
+
         const labels = Object.keys(baseScenario).filter(k => k !== "improvements");
         const waitData = labels.map(L => baseScenario[L].mean.avg_wait_time);
 
