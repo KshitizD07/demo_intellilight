@@ -94,7 +94,8 @@ def generate_route_file(
     # else:
     #     base_multiplier = 1.0
     curriculum_max_flows = [600, 1100, 1200]
-    base_multiplier = curriculum_max_flows[curriculum_stage] / 400.0
+    clamped_stage = max(0, min(len(curriculum_max_flows) - 1, curriculum_stage))
+    base_multiplier = curriculum_max_flows[clamped_stage] / 400.0
     
     final_multiplier = base_multiplier * complexity_multiplier
     
@@ -478,12 +479,13 @@ def get_route_file_stats(route_dir: Optional[str] = None) -> Dict:
 # UTILITY FUNCTIONS
 # =============================================================================
 
-def generate_unique_filename(route_dir: Optional[str] = None) -> str:
+def generate_unique_filename(route_dir: Optional[str] = None, prefix: str = "route") -> str:
     """
     Generate a unique filename for a route file.
     
     Args:
         route_dir: Directory where file will be created (default: from config)
+        prefix: Filename prefix (default: "route")
     
     Returns:
         Full path to unique route file
@@ -501,7 +503,7 @@ def generate_unique_filename(route_dir: Optional[str] = None) -> str:
     
     # Generate unique ID
     unique_id = uuid.uuid4().hex[:8]
-    filename = f"route_{unique_id}.rou.xml"
+    filename = f"{prefix}_{unique_id}.rou.xml"
     
     return os.path.join(route_dir, filename)
 
@@ -552,7 +554,7 @@ class RouteGenerator:
     """
 
     def generate_unique_filename(self, prefix: str = "route"):
-        return generate_unique_filename()
+        return generate_unique_filename(prefix=prefix)
 
     def generate_route_file(self, filename: str, scenario="RANDOM", curriculum_stage=0):
         return generate_route_file(filename, scenario, curriculum_stage)

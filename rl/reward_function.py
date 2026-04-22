@@ -229,6 +229,10 @@ class EnhancedRewardCalculator:
         if not emergency_active:
             return 0.0
         
+        # Guard: emergency_direction must be a valid index into wait_times
+        if emergency_direction is None or emergency_direction < 0 or emergency_direction >= len(wait_times):
+            return 0.0
+        
         emergency_has_green = False
         
         # Check if emergency direction has green

@@ -128,6 +128,11 @@ class CorridorEnv(gym.Env):
         # Map RL phase index to SUMO TLS phase index (must match corridor.net.xml)
         self.sumo_phase_map = {0: 0, 1: 1, 2: 2, 3: 3}
 
+        # ── Dashboard Overrides ──────────────────────────────────────────────
+        self.live_override = False
+        self.predictive_ai = True
+        self.auto_routing = True
+
         # ── Spaces ────────────────────────────────────────────────────────────
         # Centralised action: one duration choice per (junction × phase)
         self.action_space = spaces.MultiDiscrete(
@@ -167,6 +172,10 @@ class CorridorEnv(gym.Env):
         # Current executing phase per junction (0-3), updated each sub-step
         self.current_phases: Dict[str, int] = {j: 0 for j in self.junctions}
 
+        # Emergency vehicle tracking (per-junction)
+        self.emergency_active: Dict[str, bool] = {j: False for j in self.junctions}
+        self.emergency_direction: Dict[str, int] = {j: -1 for j in self.junctions}
+
     # ── Gymnasium API ─────────────────────────────────────────────────────────
 
     def reset(
@@ -205,6 +214,8 @@ class CorridorEnv(gym.Env):
         self.cumulative_arrived = 0
         self.prev_queues = {j: np.zeros(4) for j in self.junctions}
         self.current_phases = {j: 0 for j in self.junctions}
+        self.emergency_active = {j: False for j in self.junctions}
+        self.emergency_direction = {j: -1 for j in self.junctions}
 
         for rc in self.reward_calcs:
             rc.reset()
@@ -264,7 +275,22 @@ class CorridorEnv(gym.Env):
                         
                     elif cmd_type == "FAILSAFE":
                         print(f"[Web Command] Failsafe Triggered: override={cmd_val}")
-                        # Example: flip a flag (self.failsafe_active = True), when True, ignore `action` and force a Fixed-Timer logic.
+                        self.live_override = (cmd_val == "true" or cmd_val is True)
+                        
+                    elif cmd_type == "LIVE_OVERRIDE":
+                        self.live_override = (cmd_val == "true" or cmd_val is True)
+
+                    elif cmd_type == "PREDICTIVE_AI":
+                        self.predictive_ai = (cmd_val == "true" or cmd_val is True)
+
+                    elif cmd_type == "AUTO_ROUTING":
+                        self.auto_routing = (cmd_val == "true" or cmd_val is True)
+
+                    elif cmd_type == "EMERGENCY_OVERRIDE":
+                        print(f"[Web Command] EMERGENCY KILL-SWITCH!")
+                        # Force all lights to EW Through for 30 seconds
+                        for jid in self.junctions:
+                            traci.trafficlight.setPhase(jid, 0)
                         
                     elif cmd_type == "LOAD_MODEL":
                         print(f"[Web Command] Model swap requested to {cmd_val}")
@@ -272,12 +298,22 @@ class CorridorEnv(gym.Env):
             except Exception as e:
                 # Ignore transient Redis errors
                 pass
-        # Decode action into per-junction, per-phase durations (in seconds)
-        # Shape: (n_intersections, n_phases)
-        phase_durations: List[List[int]] = [
-            [GREEN_DURATIONS[action[i * self.n_phases + p]] for p in range(self.n_phases)]
-            for i in range(self.n_intersections)
-        ]
+
+        # ── Action Processing ──────────────────────────────────────────────────
+        
+        # If live override is active, we ignore the agent's action and use 
+        # a safe fixed-timer policy (e.g. 25s for each phase)
+        if self.live_override:
+            phase_durations: List[List[int]] = [
+                [25, 25, 25, 25] for _ in range(self.n_intersections)
+            ]
+        else:
+            # Decode action into per-junction, per-phase durations (in seconds)
+            # Shape: (n_intersections, n_phases)
+            phase_durations: List[List[int]] = [
+                [GREEN_DURATIONS[action[i * self.n_phases + p]] for p in range(self.n_phases)]
+                for i in range(self.n_intersections)
+            ]
 
         # Initialise phase tracking for this cycle
         current_phase_idx = [0] * self.n_intersections      # which phase each junction is on
@@ -293,36 +329,45 @@ class CorridorEnv(gym.Env):
 
         # ── Inner simulation loop ─────────────────────────────────────────────
         old_step = self.simulation_step
+        # Track which junctions need all-red clearance after this tick
+        all_red_remaining = [0] * self.n_intersections
+
         # Advance 1 s at a time until every junction has completed all 4 phases
         while not all(phase_done):
             traci.simulationStep()
             self.simulation_step += 1
             self.cumulative_arrived += traci.simulation.getArrivedNumber()
 
+            # Check for emergency vehicles once per simulation second
+            self._check_emergency_vehicles()
+
             for i, jid in enumerate(self.junctions):
                 if phase_done[i]:
                     continue
 
+                # If this junction is in all-red clearance, count down
+                if all_red_remaining[i] > 0:
+                    all_red_remaining[i] -= 1
+                    if all_red_remaining[i] <= 0:
+                        # All-red finished — advance to next phase or mark done
+                        current_phase_idx[i] += 1
+                        if current_phase_idx[i] >= self.n_phases:
+                            phase_done[i] = True
+                        else:
+                            next_p = current_phase_idx[i]
+                            phase_timer[i] = phase_durations[i][next_p]
+                            self.current_phases[jid] = next_p
+                            try:
+                                traci.trafficlight.setPhase(jid, self.sumo_phase_map[next_p])
+                            except traci.TraCIException:
+                                pass
+                    continue
+
+                # Normal green countdown
                 phase_timer[i] -= 1
                 if phase_timer[i] <= 0:
-                    # Current phase expired — run all-red clearance
-                    for _ in range(ALL_RED):
-                        traci.simulationStep()
-                        self.simulation_step += 1
-                        self.cumulative_arrived += traci.simulation.getArrivedNumber()
-
-                    current_phase_idx[i] += 1
-                    if current_phase_idx[i] >= self.n_phases:
-                        phase_done[i] = True
-                    else:
-                        # Advance to next phase
-                        next_p = current_phase_idx[i]
-                        phase_timer[i] = phase_durations[i][next_p]
-                        self.current_phases[jid] = next_p
-                        try:
-                            traci.trafficlight.setPhase(jid, self.sumo_phase_map[next_p])
-                        except traci.TraCIException:
-                            pass
+                    # Green expired — enter all-red clearance (counted globally)
+                    all_red_remaining[i] = ALL_RED
 
         self.cycle_count += 1
 
@@ -331,13 +376,17 @@ class CorridorEnv(gym.Env):
         total_reward = 0.0
 
         for i, jid in enumerate(self.junctions):
+            # Map 4-phase to 2-phase for reward (0,1=EW → 0; 2,3=NS → 1)
+            phase_2 = 0 if self.current_phases[jid] in [0, 1] else 1
+            em_dir = self.emergency_direction[jid]
+
             r = self.reward_calcs[i].calculate_reward(
                 queues=states[jid]["queues"],
                 wait_times=states[jid]["wait_times"],
                 arrived_count=self.cumulative_arrived,
-                emergency_active=False,
-                emergency_direction=None,
-                current_phase=self.current_phases[jid],
+                emergency_active=self.emergency_active[jid],
+                emergency_direction=em_dir if em_dir >= 0 else None,
+                current_phase=phase_2,
             )
             total_reward += r
 
@@ -485,3 +534,45 @@ class CorridorEnv(gym.Env):
             for jid in self.junctions
         ]
         return np.concatenate(obs_parts).astype(np.float32)
+
+    def _check_emergency_vehicles(self):
+        """
+        Detect emergency vehicles and determine which junction/direction
+        they are approaching. Updates self.emergency_active and
+        self.emergency_direction per junction.
+        """
+        try:
+            vehicles = traci.vehicle.getIDList()
+        except traci.TraCIException:
+            return
+
+        # Find emergency vehicles (route_generator uses "ambulance_" prefix,
+        # admin console injects "emergency_" prefix)
+        emerg = [v for v in vehicles
+                 if v.startswith("ambulance_") or v.startswith("emergency_")]
+
+        # Reset all junctions first
+        for jid in self.junctions:
+            self.emergency_active[jid] = False
+            self.emergency_direction[jid] = -1
+
+        for veh_id in emerg:
+            try:
+                lane = traci.vehicle.getLaneID(veh_id)
+            except traci.TraCIException:
+                continue
+
+            # Match lane to junction and direction
+            for jid in self.junctions:
+                for dir_idx, (direction, lane_ids) in enumerate(
+                    [("N", self.lanes[jid]["N"]),
+                     ("S", self.lanes[jid]["S"]),
+                     ("E", self.lanes[jid]["E"]),
+                     ("W", self.lanes[jid]["W"])]
+                ):
+                    # Check if vehicle lane matches any incoming lane for this direction
+                    lane_base = lane.rsplit("_", 1)[0] + "_" if "_" in lane else lane
+                    if any(lane.startswith(lid.rsplit("_", 1)[0]) for lid in lane_ids):
+                        self.emergency_active[jid] = True
+                        self.emergency_direction[jid] = dir_idx
+                        break
