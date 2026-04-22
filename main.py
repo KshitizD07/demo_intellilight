@@ -4,23 +4,31 @@ Intelli-Light Unified CLI
 
 Single entry point for all project operations.
 
-Commands:
-    train      -- Train the corridor RL agent (PPO)
-    evaluate   -- Run evaluation against Fixed-Timer and Max-Pressure baselines
-    test-gui   -- Load a saved model and visualise it via the SUMO GUI
+Commands (Centralized — legacy):
+    train        -- Train the corridor RL agent (centralized PPO)
+    evaluate     -- Run evaluation against baselines
+    test-gui     -- Visualise centralized model in SUMO GUI
+
+Commands (ILPS — v2.0):
+    train-ilps   -- Train ILPS per-phase universal junction brain
+    eval-ilps    -- Evaluate ILPS model (with scalability test)
+    test-ilps-gui -- Visualise ILPS model in SUMO GUI
 
 Examples:
-    # Lightweight sanity check on local machine (Asus TUF A15)
-    python main.py train --steps 500 --envs 1
+    # Lightweight ILPS sanity check
+    python main.py train-ilps --steps 500 --envs 1
 
-    # Full corridor training on Google Colab
-    python main.py train --steps 1000000 --envs 4
+    # Full ILPS training on Colab
+    python main.py train-ilps --steps 200000 --envs 4 --device auto
 
-    # Evaluate best checkpoint after Colab training
-    python main.py evaluate
+    # Evaluate ILPS model
+    python main.py eval-ilps --model models/checkpoints/intellilight_ilps_final.zip
 
-    # Watch the agent drive the corridor
-    python main.py test-gui --model models/checkpoints/intellilight_corridor_final.zip --plot
+    # Scalability test: deploy 3-junction model to 9 junctions
+    python main.py eval-ilps --model models/checkpoints/intellilight_ilps_final.zip --junctions 9
+
+    # Legacy centralized training
+    python main.py train --steps 200000 --envs 2
 """
 
 import argparse
@@ -127,6 +135,85 @@ def run_test_gui(args):
         plt.show()
 
 
+# ── ILPS Sub-command handlers ─────────────────────────────────────────────────
+
+def run_train_ilps(args):
+    """Train ILPS per-phase universal junction brain."""
+    print("=" * 60)
+    print("INTELLILIGHT — ILPS Per-Phase Training")
+    print("=" * 60)
+    from training.train_ilps import train_ilps
+    train_ilps(
+        total_timesteps=args.steps,
+        n_envs=args.envs,
+        n_junctions=args.junctions,
+        device=args.device,
+        use_subproc=args.subproc,
+        resume_from=args.resume,
+    )
+
+
+def run_eval_ilps(args):
+    """Evaluate ILPS model with optional scalability test."""
+    print("=" * 60)
+    print("INTELLILIGHT — ILPS Evaluation")
+    print("=" * 60)
+    from training.evaluate_ilps import evaluate_ilps_model
+    evaluate_ilps_model(
+        model_path=args.model,
+        n_episodes=args.episodes,
+        n_junctions=args.junctions,
+        output_file=args.output,
+        use_gui=args.gui,
+    )
+
+
+def run_test_ilps_gui(args):
+    """Visualise ILPS model on PerPhaseCorridorEnv with SUMO GUI."""
+    print("=" * 60)
+    print("INTELLILIGHT — ILPS GUI Visualisation")
+    print("=" * 60)
+
+    from rl.per_phase_env import PerPhaseCorridorEnv
+
+    try:
+        model = PPO.load(args.model)
+    except Exception as exc:
+        print(f"[ERROR] Could not load model from '{args.model}': {exc}")
+        sys.exit(1)
+
+    env = PerPhaseCorridorEnv(
+        n_junctions=args.junctions, use_gui=True, curriculum_stage=0
+    )
+    obs, info = env.reset()
+
+    print(f"Model      : {args.model}")
+    print(f"Junctions  : {args.junctions}")
+    print(f"Env        : PerPhaseCorridorEnv (ILPS)")
+    print("-" * 60)
+
+    total_reward = 0.0
+    steps = 0
+    done = truncated = False
+
+    while not (done or truncated):
+        action, _ = model.predict(obs, deterministic=True)
+        obs, reward, done, truncated, info = env.step(int(action))
+        total_reward += reward
+        steps += 1
+
+        if info.get("is_execution_step", False) and steps % 3 == 0:
+            print(
+                f"Step {steps:4d} | J={info['junction_id']} "
+                f"P={info['phase']} | reward={total_reward:8.2f} | "
+                f"throughput={info.get('throughput', 0):5d}"
+            )
+
+    env.close()
+    print("-" * 60)
+    print(f"Episode complete — steps: {steps}, total reward: {total_reward:.2f}")
+
+
 # ── CLI definition ────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
@@ -179,6 +266,75 @@ if __name__ == "__main__":
         help="Show matplotlib plots after episode ends"
     )
 
+    # ── train-ilps ──
+    ilps_train_p = subparsers.add_parser(
+        "train-ilps", help="Train ILPS per-phase universal junction brain"
+    )
+    ilps_train_p.add_argument(
+        "--steps", type=int, default=200000,
+        help="Total training timesteps (default: 200000)"
+    )
+    ilps_train_p.add_argument(
+        "--envs", type=int, default=4,
+        help="Parallel SUMO environments (default: 4)"
+    )
+    ilps_train_p.add_argument(
+        "--junctions", type=int, default=3,
+        help="Junctions per corridor (default: 3)"
+    )
+    ilps_train_p.add_argument(
+        "--device", type=str, default="auto", choices=["auto", "cpu", "cuda"],
+        help="Device (default: auto)"
+    )
+    ilps_train_p.add_argument(
+        "--subproc", action="store_true",
+        help="Use SubprocVecEnv for true parallelism"
+    )
+    ilps_train_p.add_argument(
+        "--resume", type=str, default=None,
+        help="Resume from ILPS checkpoint"
+    )
+
+    # ── eval-ilps ──
+    ilps_eval_p = subparsers.add_parser(
+        "eval-ilps", help="Evaluate ILPS model (with scalability test)"
+    )
+    ilps_eval_p.add_argument(
+        "--model", type=str,
+        default="models/checkpoints/intellilight_ilps_final.zip",
+        help="Path to trained ILPS model (.zip)"
+    )
+    ilps_eval_p.add_argument(
+        "--episodes", type=int, default=5,
+        help="Episodes per scenario (default: 5)"
+    )
+    ilps_eval_p.add_argument(
+        "--junctions", type=int, default=3,
+        help="Junctions (3=standard, 9=scalability test)"
+    )
+    ilps_eval_p.add_argument(
+        "--output", type=str, default="ilps_evaluation_results.json",
+        help="Output JSON file"
+    )
+    ilps_eval_p.add_argument(
+        "--gui", action="store_true",
+        help="Show SUMO GUI"
+    )
+
+    # ── test-ilps-gui ──
+    ilps_gui_p = subparsers.add_parser(
+        "test-ilps-gui", help="Visualise ILPS model in SUMO GUI"
+    )
+    ilps_gui_p.add_argument(
+        "--model", type=str,
+        default="models/checkpoints/intellilight_ilps_final.zip",
+        help="Path to trained ILPS model (.zip)"
+    )
+    ilps_gui_p.add_argument(
+        "--junctions", type=int, default=3,
+        help="Junctions to deploy (default: 3)"
+    )
+
     args = parser.parse_args()
 
     if args.command == "train":
@@ -187,3 +343,9 @@ if __name__ == "__main__":
         run_evaluate(args)
     elif args.command == "test-gui":
         run_test_gui(args)
+    elif args.command == "train-ilps":
+        run_train_ilps(args)
+    elif args.command == "eval-ilps":
+        run_eval_ilps(args)
+    elif args.command == "test-ilps-gui":
+        run_test_ilps_gui(args)
