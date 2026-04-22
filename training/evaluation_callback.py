@@ -14,7 +14,7 @@ from typing import Optional, List
 from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.vec_env import VecEnv, DummyVecEnv
 
-from rl.traffic_env import TrafficEnv
+from rl.multi_agent_env import CorridorEnv
 from training.baseline_controllers import MaxPressureController, TrafficController
 from training.evaluation_engine import EvaluationEngine
 from training.metrics_calculator import MetricsCalculator
@@ -82,7 +82,7 @@ class EvaluationCallback(BaseCallback):
     def _init_callback(self) -> None:
         """Initialize evaluation components on first call."""
         # Create separate evaluation environment (deterministic)
-        self.eval_env = TrafficEnv(use_gui=False, curriculum_stage=0)
+        self.eval_env = CorridorEnv(use_gui=False, curriculum_stage=0)
         
         # Create evaluation engine
         self.metrics_calc = MetricsCalculator(starvation_threshold=90)

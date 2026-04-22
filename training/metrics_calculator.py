@@ -123,8 +123,22 @@ class MetricsCalculator:
         
         # ===== WAIT TIME METRICS =====
         
-        all_wait_times = np.array(wait_times)  # Shape: (steps, 4)
-        all_queues = np.array(queues)  # Shape: (steps, 4)
+        # Build arrays safely — handle variable-length per-step data
+        # from multi-intersection environments (ragged rows)
+        try:
+            all_wait_times = np.array(wait_times, dtype=np.float64)
+        except ValueError:
+            # Ragged list: pad each row to the max length
+            max_len = max((len(w) for w in wait_times), default=0)
+            padded = [list(w) + [0.0] * (max_len - len(w)) for w in wait_times]
+            all_wait_times = np.array(padded, dtype=np.float64)
+
+        try:
+            all_queues = np.array(queues, dtype=np.float64)
+        except ValueError:
+            max_len = max((len(q) for q in queues), default=0)
+            padded = [list(q) + [0.0] * (max_len - len(q)) for q in queues]
+            all_queues = np.array(padded, dtype=np.float64)
         
         # Total and average
         metrics.total_wait_time = float(np.sum(all_wait_times)) if all_wait_times.size > 0 else 0.0
@@ -261,12 +275,19 @@ class MetricsCalculator:
         Count starvation events (any direction waiting too long).
         
         Args:
-            wait_times: Array of wait times (steps, 4)
+            wait_times: Array of wait times (steps, N) or (steps,)
         
         Returns:
             int: Number of starvation events detected
         """
-        # Count steps where ANY direction exceeded threshold
+        if wait_times.size == 0:
+            return 0
+
+        if wait_times.ndim == 1:
+            # 1D: simple threshold check per step
+            return int(np.sum(wait_times > self.starvation_threshold))
+
+        # 2D: count steps where ANY direction exceeded threshold
         exceeded = np.any(wait_times > self.starvation_threshold, axis=1)
         starvation_events = int(np.sum(exceeded))
         

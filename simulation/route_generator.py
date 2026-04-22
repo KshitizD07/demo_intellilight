@@ -558,8 +558,8 @@ class RouteGenerator:
         return generate_route_file(filename, scenario, curriculum_stage)
     def cleanup_old_routes(self, max_files: int =None)-> int:
         from pathlib import Path
-        from configs.parameters import ResourceConfig
-        max_files=max_files or ResourceConfig.MAX_ROUTE_FILES
+        # ResourceConfig doesn't exist; use a sensible default
+        max_files = max_files or 50
         route_dir = Path(paths.ROUTES_DIR)
         route_files=list(route_dir.glob("route_*.rou.xml"))
         route_files.sort(key=lambda f: f.stat().st_mtime)

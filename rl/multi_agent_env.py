@@ -25,7 +25,8 @@ Deployment note:
   SubprocVecEnv with N_ENVS=2 is recommended for consumer-grade GPUs to avoid
   memory pressure. Cloud training (e.g., Colab A100) can safely use N_ENVS=4.
 """
-
+import redis
+import json
 import os
 import sys
 import gymnasium as gym
@@ -116,6 +117,13 @@ class CorridorEnv(gym.Env):
                 "W": ["J2_to_J3_0", "J2_to_J3_1"],   # arterial westbound (from J2)
             },
         }
+        try:
+            # Use a fast timeout to never hang the RL loop if Redis drops
+            self.redis_client = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True, socket_timeout=0.05)
+            self.redis_client.ping()
+        except Exception as e:
+            self.redis_client = None
+            print(f"Failed to connect to Redis middleman: {e}")
 
         # Map RL phase index to SUMO TLS phase index (must match corridor.net.xml)
         self.sumo_phase_map = {0: 0, 1: 1, 2: 2, 3: 3}
@@ -220,6 +228,50 @@ class CorridorEnv(gym.Env):
         Returns:
             obs, reward, terminated, truncated, info
         """
+        if self.redis_client:
+            try:
+                # Process all commands currently in the queue
+                while True:
+                    cmd_str = self.redis_client.lpop('intellilight_commands')
+                    if not cmd_str:
+                        break
+                    
+                    cmd = json.loads(cmd_str)
+                    cmd_type = cmd.get("type")
+                    cmd_val = cmd.get("value")
+                    
+                    if cmd_type == "SCENARIO":
+                        print(f"[Web Command] Scenario Hot-Swap requested: {cmd_val}")
+                        # Example: Override the next reset scenario curriculum
+                        # self.curriculum_stage = {"WEEKEND": 0, "EVENING_RUSH": 1, "MORNING_RUSH": 2}[cmd_val]
+                        
+                    elif cmd_type == "EVENT":
+                        print(f"[Web Command] Event Injection: {cmd_val}")
+                        if cmd_val == "AMBULANCE":
+                            try:
+                                import uuid
+                                veh_id = f"emergency_{uuid.uuid4().hex[:6]}"
+                                valid_routes = traci.route.getIDList()
+                                if valid_routes:
+                                    traci.vehicle.add(vehID=veh_id, routeID=valid_routes[0], departLane="best", departSpeed="max")
+                                    try:
+                                        traci.vehicle.setColor(veh_id, (255, 0, 0, 255))
+                                        traci.vehicle.setVehicleClass(veh_id, "emergency")
+                                    except Exception:
+                                        pass
+                            except Exception as e:
+                                print(f"Failed to inject ambulance: {e}")
+                        
+                    elif cmd_type == "FAILSAFE":
+                        print(f"[Web Command] Failsafe Triggered: override={cmd_val}")
+                        # Example: flip a flag (self.failsafe_active = True), when True, ignore `action` and force a Fixed-Timer logic.
+                        
+                    elif cmd_type == "LOAD_MODEL":
+                        print(f"[Web Command] Model swap requested to {cmd_val}")
+                        
+            except Exception as e:
+                # Ignore transient Redis errors
+                pass
         # Decode action into per-junction, per-phase durations (in seconds)
         # Shape: (n_intersections, n_phases)
         phase_durations: List[List[int]] = [
@@ -303,6 +355,30 @@ class CorridorEnv(gym.Env):
             "intersections": states,                 # needed for wait_time metrics
             "cycle_time": self.simulation_step - old_step
         }
+
+          # ── Publish Telemetry (Outbound) ──────────────────────────────────────
+        if self.redis_client:
+            try:
+                # Calculate aggregated waiting time
+                total_waits = [wait for s in states.values() for wait in s["wait_times"]]
+                avg_wait = float(np.mean(total_waits)) if total_waits else 0.0
+                
+                # Calculate total queue length across all junctions
+                total_queue = sum(sum(s["queues"]) for s in states.values())
+                
+                payload = {
+                    "cycle": self.cycle_count,
+                    "throughput": self.cumulative_arrived,
+                    "total_queue": total_queue,
+                    "avg_wait": avg_wait,
+                    "active_phases": self.current_phases,
+                    "intersections": states
+                }
+                
+                # Publish JSON string to the telemetry channel
+                self.redis_client.publish('intellilight_telemetry', json.dumps(payload))
+            except Exception:
+                pass
 
         return obs, avg_reward, terminated, False, info
 

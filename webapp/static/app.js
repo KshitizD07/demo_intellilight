@@ -54,7 +54,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }).catch(err => addTerminalLog("API_ERR: Models fetch failed"));
 
     // Fetch Historical Data and Render Charts
-    fetch(`${API_BASE}/api/historical`)
+    fetch(`${API_BASE}/api/results`)
         .then(res => res.json())
         .then(data => {
             if (data.error) {
@@ -109,7 +109,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let socket;
     function connectWS() {
         addTerminalLog("INIT_CONNECT_SEQ: PENDING");
-        socket = new WebSocket(`${wsProtocol}//${wsHost}/ws`);
+        socket = new WebSocket(`${wsProtocol}//${wsHost}/ws/telemetry`);
         
         socket.onopen = () => {
             elWsDot.classList.replace("bg-zinc-500", "bg-primary");
@@ -243,6 +243,19 @@ document.addEventListener("DOMContentLoaded", () => {
         // We render Wait Time on the single chart container inside the Wait Time Analytics card
         const baseScenario = json.results_by_scenario["WEEKEND"] || json.results_by_scenario["MORNING_RUSH"];
         if(!baseScenario) return;
+
+        // Populate HUD with IntelliLight historical data so UI isn't flat/zeroed
+        const rlStats = baseScenario["IntelliLight-RL"];
+        if (rlStats && rlStats.mean) {
+            updateHUD({
+                cycle: "HISTORICAL",
+                throughput: Math.round(rlStats.mean.throughput),
+                avg_wait: rlStats.mean.avg_wait_time,
+                total_queue: rlStats.mean.avg_queue_length
+            });
+            addTerminalLog(`LOADED HISTORICAL RUN: ${json.timestamp || "N/A"}`);
+            addRlLog("Loaded latest historical run", "System Initialization", "Resume Ready", "", "primary", "history");
+        }
 
         const labels = Object.keys(baseScenario).filter(k => k !== "improvements");
         const waitData = labels.map(L => baseScenario[L].mean.avg_wait_time);
