@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Intelli-Light AI Command Center</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;900&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+tailwind.config = {
+  darkMode: "class",
+  theme: {
+    extend: {
+      "colors": {
+              "inverse-on-surface": "#313030",
+              "surface-bright": "#3a3939",
+              "on-secondary-fixed": "#241a00",
+              "on-tertiary-container": "#890005",
+              "on-tertiary-fixed-variant": "#930005",
+              "on-surface": "#e5e2e1",
+              "on-surface-variant": "#bccbb8",
+              "inverse-surface": "#e5e2e1",
+              "error-container": "#93000a",
+              "primary-container": "#34c759",
+              "inverse-primary": "#006e28",
+              "primary-fixed-dim": "#53e16f",
+              "surface-container-low": "#1c1b1b",
+              "surface-container-lowest": "#0e0e0e",
+              "secondary-fixed-dim": "#f1c100",
+              "on-error": "#690005",
+              "surface-variant": "#353534",
+              "surface-container-highest": "#353534",
+              "surface-dim": "#131313",
+              "on-primary-fixed-variant": "#00531c",
+              "on-secondary-container": "#6e5700",
+              "secondary-fixed": "#ffe08b",
+              "background": "#131313",
+              "on-tertiary": "#690003",
+              "tertiary-fixed": "#ffdad5",
+              "on-primary-container": "#004d1a",
+              "on-secondary": "#3d2f00",
+              "tertiary-fixed-dim": "#ffb4aa",
+              "outline-variant": "#3d4a3c",
+              "surface-tint": "#53e16f",
+              "primary": "#56e472",
+              "on-tertiary-fixed": "#410001",
+              "surface": "#131313",
+              "on-secondary-fixed-variant": "#584400",
+              "outline": "#869584",
+              "surface-container-high": "#2a2a2a",
+              "tertiary": "#ffb8ae",
+              "error": "#ffb4ab",
+              "tertiary-container": "#ff8e80",
+              "on-primary-fixed": "#002107",
+              "on-primary": "#003911",
+              "primary-fixed": "#72fe88",
+              "on-background": "#e5e2e1",
+              "surface-container": "#201f1f",
+              "secondary": "#ffecc0",
+              "secondary-container": "#fecb00",
+              "on-error-container": "#ffdad6"
+      },
+      "borderRadius": {
+              "DEFAULT": "0.125rem",
+              "lg": "0.25rem",
+              "xl": "0.5rem",
+              "full": "0.75rem"
+      },
+      "spacing": {
+              "lg": "24px",
+              "gutter": "24px",
+              "xl": "48px",
+              "xs": "4px",
+              "unit": "4px",
+              "sm": "8px",
+              "margin": "32px",
+              "md": "16px"
+      },
+      "fontFamily": {
+              "headline-lg": ["Space Grotesk"],
+              "body-lg": ["Inter"],
+              "mono-data": ["Inter"],
+              "headline-md": ["Space Grotesk"],
+              "label-caps": ["Space Grotesk"],
+              "display-xl": ["Space Grotesk"],
+              "body-md": ["Inter"]
+      },
+      "fontSize": {
+              "headline-lg": ["32px", {"lineHeight": "1.2","fontWeight": "600"}],
+              "body-lg": ["18px", {"lineHeight": "1.5","fontWeight": "400"}],
+              "mono-data": ["14px", {"lineHeight": "1.0","letterSpacing": "-0.01em","fontWeight": "500"}],
+              "headline-md": ["24px", {"lineHeight": "1.3","fontWeight": "500"}],
+              "label-caps": ["12px", {"lineHeight": "1.0","letterSpacing": "0.1em","fontWeight": "700"}],
+              "display-xl": ["48px", {"lineHeight": "1.1","letterSpacing": "-0.02em","fontWeight": "700"}],
+              "body-md": ["16px", {"lineHeight": "1.5","fontWeight": "400"}]
+      }
+    },
+  },
+}
+</script>
+<style>
+/* Cyber-Terminal specific overlays - no JS needed */
+body {
+    background-color: #050505;
+}
+.scanlines {
+    background: linear-gradient(
+        to bottom,
+        rgba(255,255,255,0),
+        rgba(255,255,255,0) 50%,
+        rgba(0,0,0,0.2) 50%,
+        rgba(0,0,0,0.2)
+    );
+    background-size: 100% 4px;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none;
+    z-index: 50;
+    opacity: 0.15;
+}
+.glass-panel {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.glow-green { box-shadow: 0 0 15px -5px #34C759; }
+.glow-red { box-shadow: 0 0 15px -5px #FF3B30; }
+.glow-yellow { box-shadow: 0 0 15px -5px #FFCC00; }
+.text-glow-green { text-shadow: 0 0 8px rgba(52,199,89,0.5); }
+.corridor-light.green { background-color: #34C759; box-shadow: 0 0 10px #34C759; }
+.corridor-light.red { background-color: #FF3B30; }
+</style>
+</head>
+<body class="bg-background text-on-background font-body-md text-body-md overflow-x-hidden min-h-screen flex flex-col md:flex-row relative">
+<div class="scanlines"></div>
+<!-- SideNavBar (Desktop) -->
+<nav class="hidden md:flex flex-col fixed left-0 top-0 h-full z-40 bg-[#050505]/90 backdrop-blur-2xl border-r border-white/5 shadow-[10px_0_30px_rgba(0,0,0,0.5)] w-72">
+    <div class="px-6 py-8 border-b border-white/5">
+        <h2 class="font-headline-md text-headline-md text-primary tracking-tighter text-glow-green">Command Center</h2>
+        <p class="font-mono-data text-mono-data text-on-surface-variant mt-2">Sector 7-G</p>
+    </div>
+    
+    <div class="flex-1 py-6 flex flex-col gap-2">
+        <a class="flex items-center gap-3 bg-[#34C759]/10 text-[#34C759] border-r-4 border-[#34C759] px-6 py-4 shadow-[0_0_20px_rgba(52,199,89,0.15)] group" href="#">
+            <span class="material-symbols-outlined group-hover:translate-x-1 duration-200">grid_view</span>
+            <span class="font-['Space_Grotesk'] text-sm font-medium tracking-wide">Dashboard</span>
+        </a>
+        <a id="btn-admin-panel" class="flex items-center gap-3 text-zinc-500 px-6 py-4 hover:text-[#34C759] hover:bg-white/5 transition-colors group cursor-pointer" href="#">
+            <span class="material-symbols-outlined group-hover:translate-x-1 duration-200">security</span>
+            <span class="font-['Space_Grotesk'] text-sm font-medium tracking-wide">Admin Panel</span>
+        </a>
+        
+        <!-- Controls inserted logically into sidebar -->
+        <div class="px-6 py-2 mt-4">
+            <label class="text-xs text-zinc-500 uppercase tracking-widest font-mono-data">Scenario Override</label>
+            <select id="scenario-select" class="w-full mt-1 bg-surface-container border border-white/10 rounded px-3 py-2 text-sm text-on-surface focus:outline-none focus:border-primary">
+                <option value="WEEKEND">Weekend</option>
+                <option value="MORNING_RUSH">Morning Rush</option>
+                <option value="EVENING_RUSH">Evening Rush</option>
+            </select>
+        </div>
+        
+        <div class="px-6 py-2">
+            <label class="text-xs text-zinc-500 uppercase tracking-widest font-mono-data">Model Weights</label>
+            <select id="model-select" class="w-full mt-1 bg-surface-container border border-white/10 rounded px-3 py-2 text-sm text-on-surface focus:outline-none focus:border-primary">
+                <option value="" disabled selected>Loading models...</option>
+            </select>
+        </div>
+
+    </div>
+
+    <div class="px-6 py-6 border-t border-white/5 space-y-4">
+        <div id="ws-status" class="flex items-center gap-2 text-zinc-500 font-mono-data text-mono-data transition-colors">
+            <div id="ws-dot" class="w-2 h-2 rounded-full bg-zinc-500"></div>
+            <span id="ws-text">Connecting...</span>
+        </div>
+        <div class="flex flex-col gap-2 pt-4">
+            <a class="flex items-center gap-3 text-zinc-500 hover:text-primary transition-colors cursor-pointer" id="btn-inject-ambulance">
+                <span class="material-symbols-outlined text-[18px]">medical_services</span>
+                <span class="font-['Space_Grotesk'] text-sm font-medium tracking-wide">Spawn Ambulance</span>
+            </a>
+            <a class="flex items-center gap-3 text-zinc-500 hover:text-primary transition-colors cursor-pointer" id="btn-inject-accident">
+                <span class="material-symbols-outlined text-[18px]">car_crash</span>
+                <span class="font-['Space_Grotesk'] text-sm font-medium tracking-wide">Inject Accident</span>
+            </a>
+        </div>
+    </div>
+</nav>
+
+<!-- Main Content Area Wrapper -->
+<div class="flex-1 md:ml-72 flex flex-col min-h-screen relative z-10">
+    <!-- TopNavBar -->
+    <header class="flex justify-between items-center w-full px-6 py-3 h-16 bg-[#050505]/80 backdrop-blur-md border-b border-white/5 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)] sticky top-0 z-30">
+        <div class="flex items-center gap-4">
+            <button class="md:hidden text-zinc-500 hover:text-zinc-200">
+                <span class="material-symbols-outlined">menu</span>
+            </button>
+            <div class="text-2xl font-black tracking-tighter text-[#34C759] drop-shadow-[0_0_8px_rgba(52,199,89,0.5)] font-['Space_Grotesk'] uppercase">
+                INTELLI-LIGHT AI
+            </div>
+        </div>
+        
+        <div class="hidden md:flex flex-1 max-w-md mx-8 relative">
+            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500">search</span>
+            <input class="w-full bg-surface-container-low border border-white/10 rounded px-10 py-1.5 text-on-surface font-mono-data text-mono-data focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all placeholder:text-zinc-600" placeholder="Search sectors, intersections..." type="text"/>
+        </div>
+        
+        <div class="flex items-center gap-4">
+            <div class="hidden lg:flex items-center gap-2">
+                <button class="px-4 py-1.5 border border-white/10 text-on-surface hover:border-primary hover:text-primary transition-colors font-label-caps text-label-caps tracking-widest rounded-sm" id="btn-status-toggle">Toggle Chart</button>
+                <button id="btn-emergency-override" class="px-4 py-1.5 bg-red-500/20 text-red-500 border border-red-500/50 hover:bg-red-500/30 transition-colors font-label-caps text-label-caps tracking-widest rounded-sm flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[16px]">warning</span>
+                    Failsafe Override
+                </button>
+            </div>
+            <div class="flex items-center gap-3 border-l border-white/10 pl-4">
+                <button class="text-zinc-500 hover:text-primary transition-colors relative">
+                    <span class="material-symbols-outlined">notifications_active</span>
+                    <span class="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full border border-[#050505]"></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 p-gutter lg:p-margin space-y-gutter">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+            
+            <!-- Main 3D Map View (Col Span 8) -->
+            <div class="lg:col-span-8 glass-panel rounded-lg p-1 relative min-h-[500px] glow-green overflow-hidden flex flex-col">
+                <div class="flex justify-between items-center p-4 border-b border-white/5 absolute top-0 left-0 right-0 z-10 bg-gradient-to-b from-black/80 to-transparent">
+                    <h3 class="font-headline-md text-headline-md text-on-surface">Sector 7-G Topography</h3>
+                    <div class="flex gap-2">
+                        <span class="px-2 py-1 bg-surface-container border border-white/10 rounded font-mono-data text-[10px] text-zinc-400">LAT 34.0522</span>
+                        <span class="px-2 py-1 bg-surface-container border border-white/10 rounded font-mono-data text-[10px] text-zinc-400">LON -118.2437</span>
+                    </div>
+                </div>
+                
+                <div class="flex-1 relative bg-surface-container-lowest w-full h-full">
+                    <img alt="Map overlay" class="w-full h-full object-cover opacity-60 mix-blend-luminosity grayscale contrast-125" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCbuowT-Qx6kGspKqd6phDphOc7VQuSdomzdc_l4X6bvFsLfTOxS7hqplSvCLtp-If_hnKW_9X88fRSZYPoOd0aQsDytdaXeuuBPUxLFgVaDWn1kAni-KQAjbwuoBv32VCEMkYALVYIEHVFbhJqejLiCYn2S8O9NZw1S_eB-EJjssa2gAunhAckzteQ2ZrDBO8qJ3H7A6anVXHXC0z2lN-a4gnJvJuYzrwILD9MqmjCCQ-GNcehG9u8opI9acLUy-vkKKgCF2aUhUA"/>
+                    
+                    <!-- Dynamic Intersection Pips -->
+                    <div id="pip-j1" class="absolute top-[30%] left-[40%] flex flex-col items-center">
+                        <div id="pip-j1-light" class="w-4 h-4 rounded-full bg-red-500 shadow-[0_0_15px_#FF3B30] border-2 border-black corridor-light red transition-colors"></div>
+                        <span class="mt-1 font-mono-data text-[10px] text-white bg-black/80 px-1 rounded">J1</span>
+                    </div>
+                    
+                    <div id="pip-j2" class="absolute top-[45%] left-[20%] flex flex-col items-center">
+                        <div id="pip-j2-light" class="w-4 h-4 rounded-full bg-yellow-400 border-2 border-black corridor-light red transition-colors"></div>
+                        <span class="mt-1 font-mono-data text-[10px] text-white bg-black/80 px-1 rounded">J2</span>
+                    </div>
+
+                    <div id="pip-j3" class="absolute top-[60%] left-[70%] flex flex-col items-center">
+                        <div id="pip-j3-light" class="w-4 h-4 rounded-full bg-primary border-2 border-black corridor-light green transition-colors"></div>
+                        <span class="mt-1 font-mono-data text-[10px] text-white bg-black/80 px-1 rounded">J3</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Right Sidebar Stats (Col Span 4) -->
+            <div class="lg:col-span-4 space-y-gutter flex flex-col">
+                <!-- Global Throughput Card -->
+                <div class="glass-panel rounded-lg p-6 glow-green flex-1">
+                    <div class="flex justify-between items-start mb-4">
+                        <h4 class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-widest">Network Throughput</h4>
+                        <span class="material-symbols-outlined text-primary">speed</span>
+                    </div>
+                    <div class="flex items-end gap-2 mb-2">
+                        <span id="hud-throughput" class="font-display-xl text-display-xl text-on-surface tracking-tighter">0</span>
+                        <span class="font-mono-data text-mono-data text-zinc-500 mb-2">veh</span>
+                    </div>
+                    <div class="w-full bg-surface-container-highest h-2 rounded-full overflow-hidden mt-6">
+                        <div id="hud-throughput-bar" class="bg-primary w-[0%] h-full shadow-[0_0_10px_#34C759] transition-all"></div>
+                    </div>
+                    <div class="flex justify-between mt-2 font-mono-data text-[10px] text-zinc-500">
+                        <span>Min</span><span>Live Update</span><span>Max</span>
+                    </div>
+                </div>
+                
+                <!-- Wait Time Analytics Card -->
+                <div class="glass-panel rounded-lg p-6 glow-yellow flex-1 relative">
+                    <div class="flex justify-between items-start mb-4">
+                        <h4 class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-widest">Avg Wait Time</h4>
+                        <span class="material-symbols-outlined text-yellow-400">timer</span>
+                    </div>
+                    <div class="flex items-end gap-2 mb-4">
+                        <span id="hud-wait" class="font-display-xl text-display-xl text-on-surface tracking-tighter">0</span>
+                        <span class="font-mono-data text-mono-data text-zinc-500 mb-2">sec</span>
+                    </div>
+                    
+                    <!-- Charting Container (Hidden by default, toggled via system status) -->
+                    <div id="historical-chart-container" class="absolute inset-0 bg-black/90 p-4 rounded-lg hidden flex-col">
+                        <h4 class="font-label-caps text-xs text-on-surface-variant mb-2">Historical Commute (Wait Time)</h4>
+                        <div class="flex-1 relative">
+                            <canvas id="chartWaitTime"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Mini Bar Chart Simulation -->
+                    <div class="flex items-end gap-1 h-16 mt-4">
+                        <div class="w-1/6 bg-primary/40 h-[40%] rounded-t-sm hover:bg-primary transition-colors"></div>
+                        <div class="w-1/6 bg-primary/40 h-[50%] rounded-t-sm hover:bg-primary transition-colors"></div>
+                        <div class="w-1/6 bg-yellow-400/40 h-[80%] rounded-t-sm border-t border-yellow-400 hover:bg-yellow-400 transition-colors"></div>
+                        <div class="w-1/6 bg-primary/40 h-[60%] rounded-t-sm hover:bg-primary transition-colors"></div>
+                        <div class="w-1/6 bg-primary/40 h-[45%] rounded-t-sm hover:bg-primary transition-colors"></div>
+                        <div class="w-1/6 bg-primary/40 h-[30%] rounded-t-sm hover:bg-primary transition-colors"></div>
+                    </div>
+                    <div class="text-right mt-2 font-mono-data text-[10px] text-yellow-400 max-w-[200px] ml-auto overflow-hidden text-ellipsis whitespace-nowrap">
+                        Last Active Queue: <span id="hud-queue">0</span> veh
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lower Section: RL State Monitor & Glitch Data -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-gutter">
+            <!-- Reinforcement Learning State List -->
+            <div class="lg:col-span-2 glass-panel rounded-lg p-0 flex flex-col border border-white/5">
+                <div class="p-4 border-b border-white/5 flex justify-between items-center bg-black/40">
+                    <h4 class="font-label-caps text-label-caps text-primary uppercase tracking-widest flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+                        RL Agent Actions Log
+                    </h4>
+                    <span class="font-mono-data text-[10px] text-zinc-500">CYCLE: <span id="hud-cycle">0</span></span>
+                </div>
+                <div id="rl-logs-container" class="flex flex-col flex-1 max-h-[300px] overflow-y-auto">
+                    <!-- Logs will be populated dynamically -->
+                    <div class="p-4 text-zinc-500 font-mono-data text-xs flex justify-center items-center h-full">Waiting for telemetry...</div>
+                </div>
+            </div>
+
+            <!-- Glitch/Raw Data Output -->
+            <div class="lg:col-span-1 glass-panel rounded-lg p-4 font-mono-data text-[10px] text-primary/70 leading-relaxed overflow-hidden relative border border-primary/20 bg-[#050505]">
+                <div class="absolute top-0 right-0 p-2 text-primary/40"><span class="material-symbols-outlined text-xs">terminal</span></div>
+                <div class="mb-2 border-b border-primary/20 pb-2 text-primary font-bold">RAW TELEMETRY STREAM</div>
+                <div id="raw-telemetry-terminal" class="opacity-80 h-[260px] overflow-hidden flex flex-col justify-end">
+                    <div>> INIT_CONNECT_SEQ: PENDING</div>
+                    <div class="animate-pulse">_</div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Chart.js & Implementation Logic -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>
